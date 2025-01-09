@@ -1,0 +1,3 @@
+# PyCharm spezifische Dateien/Ordner
+.idea/
+__pycache__/
