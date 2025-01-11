@@ -1,6 +1,7 @@
 import numpy as np
 
-from discrete_pricer import InstallmentCallPricer, BermudaPutPricer
+from discrete_pricer import InstallmentCallPricer, BermudaPutPricer, call
+from continuous_pricer import ContinuousInstallmentOptionPricer
 
 def single_check_fixed_q(S, K, r, d, vola, T, q, n):
     print("n = ", n)
@@ -42,30 +43,42 @@ import matplotlib.pyplot as plt
 if __name__ == "__main__":
     S = 105
     K = 100
-    r = 0.02
+    r = 0.05
     d = 0.00
     vola = 0.2
     T = 1
     q = 10
+    q = r*K
 
     # n = 2
-    single_check_fixed_q(S, K, r, d, vola, T, q, 2)
-    single_check_fixed_K(S, K, r, d, vola, T, 2)
+    #single_check_fixed_q(S, K, r, d, vola, T, q, 2)
+    #single_check_fixed_K(S, K, r, d, vola, T, 2)
 
     # Plot initialisieren
     plt.ion()  # Interaktive Plot-Anzeige einschalten
     fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
 
-    values = {}
-    for n in range(3, 20):
-        (call, put, check, call_stop, put_stop) = single_check_fixed_K(S, K, r, d, vola, T, n)
+    for q in [r*K]:
+        cpricer = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, q)
+        vanilla_call = cpricer.call()
+        t = np.linspace(0.001, 0.999, 1000)
+        sb = [cpricer.stop_bound(T-t[i]) for i in range(len(t))]
 
-        # Plotten
-        t = np.arange(T/n, T + T/n, T/n)
-        ax.plot(t, call_stop, label=f'n = {n}')  # Linie hinzufügen
+        ax.plot(t, sb, label=f'q = {q}')  # Linie hinzufügen
         ax.legend()  # Legende aktualisieren
         plt.draw()  # Zeichne den aktuellen Plot
         plt.pause(0.1)
+
+        values = {}
+        for n in range(3, 15):
+            (c, p, check, call_stop, put_stop) = single_check_fixed_K(S, K, r, d, vola, T, n)
+
+            # Plotten
+            t = np.arange(T/n, T + T/n, T/n)
+            ax.plot(t, call_stop, label=f'q = {q}, n = {n}')  # Linie hinzufügen
+            ax.legend()  # Legende aktualisieren
+            plt.draw()  # Zeichne den aktuellen Plot
+            plt.pause(0.1)
 
     # Interaktivität deaktivieren und finalen Plot anzeigen
     plt.ioff()
