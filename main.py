@@ -59,10 +59,10 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
 
     for q in [r*K]:
-        cpricer = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, q)
-        vanilla_call = cpricer.call()
+        lctpricer = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, q)
+        vanilla_call = lctpricer.value()
         t = np.linspace(0.001, 0.999, 1000)
-        sb = [cpricer.stop_bound(T-t[i]) for i in range(len(t))]
+        sb = [lctpricer.stop_bound(T-t[i]) for i in range(len(t))]
 
         ax.plot(t, sb, label=f'q = {q}')  # Linie hinzufügen
         ax.legend()  # Legende aktualisieren
