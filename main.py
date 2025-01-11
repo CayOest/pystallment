@@ -41,14 +41,12 @@ import matplotlib.pyplot as plt
 
 # Beispiel-Nutzung
 if __name__ == "__main__":
-    S = 105
+    S = 96
     K = 100
     r = 0.05
-    d = 0.00
+    d = 0.04
     vola = 0.2
     T = 1
-    q = 10
-    q = r*K
 
     # n = 2
     #single_check_fixed_q(S, K, r, d, vola, T, q, 2)
@@ -58,9 +56,14 @@ if __name__ == "__main__":
     plt.ion()  # Interaktive Plot-Anzeige einschalten
     fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
 
-    for q in [r*K]:
-        lctpricer = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, q)
-        vanilla_call = lctpricer.value()
+    p = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, 0, -1)
+    print("vlaue = ", p.vanilla_value())
+
+    for q in [1, 3, 8]:
+        print("q = ", q)
+        lctpricer = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, q, -1)
+        value = lctpricer.value()
+        print("value = ", value)
         t = np.linspace(0.001, 0.999, 1000)
         sb = [lctpricer.stop_bound(T-t[i]) for i in range(len(t))]
 
@@ -70,7 +73,7 @@ if __name__ == "__main__":
         plt.pause(0.1)
 
         values = {}
-        for n in range(3, 15):
+        for n in range(3, 3):
             (c, p, check, call_stop, put_stop) = single_check_fixed_K(S, K, r, d, vola, T, n)
 
             # Plotten

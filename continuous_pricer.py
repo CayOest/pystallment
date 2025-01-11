@@ -30,13 +30,13 @@ class ContinuousInstallmentOptionPricer:
         self.vola = vola
         self.T = T
         self.q = q
-        self.num_steps = 10
+        self.num_steps = 4
         self.phi = phi
 
     def _theta(self, l):
         poly = [0.5 * self.vola ** 2, self.r - self.d - 0.5 * self.vola ** 2, -(l + self.r)]
         theta = np.roots(poly)
-        if theta[0] < 0:
+        if self.phi*theta[0] < 0:
             theta = np.flip(theta)
 
         return theta
@@ -58,13 +58,14 @@ class ContinuousInstallmentOptionPricer:
         if (self.phi*self.S < self.phi*self.K):
             return xi(0, l)
         else:
-            return xi(1, l) + self.phi* l*self.S/(l+self.d) - l*self.K/(l+self.r)
+            return xi(1, l) + self.phi*(l*self.S/(l+self.d) - l*self.K/(l+self.r))
 
     def _lct_value(self, l):
         stop = self._lct_stop(l)
-        theta = self._theta(self, l)
-        if (self.S > stop):
+        theta = self._theta(l)
+        if self.phi*self.S > self.phi*stop:
             val = self._lct_value_van(l)
+            # print("vanilla = ", val)
             if self.q > 0:
                 val += self.q*theta[0] * (self.S / stop)**theta[1] / (l + self.r) / (theta[0]-theta[1])
                 val -= self.q/(l + self.r)
@@ -77,5 +78,8 @@ class ContinuousInstallmentOptionPricer:
         return gaver_lct(self._lct_stop, t, self.num_steps)
 
     def value(self):
+        return gaver_lct(self._lct_value, self.T, self.num_steps)
+
+    def vanilla_value(self):
         return gaver_lct(self._lct_value_van, self.T, self.num_steps)
 
