@@ -30,7 +30,7 @@ class ContinuousInstallmentOptionPricer:
         self.vola = vola
         self.T = T
         self.q = q
-        self.num_steps = 4
+        self.num_steps = 10
         self.phi = phi
 
     def _theta(self, l):
