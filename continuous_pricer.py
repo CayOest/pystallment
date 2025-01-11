@@ -22,7 +22,7 @@ def gaver_lct(f, t, num_steps = 10):
     return val
 
 class ContinuousInstallmentOptionPricer:
-    def __init__(self, S, K, r, d, vola, T, q):
+    def __init__(self, S, K, r, d, vola, T, q, phi = 1):
         self.S = S
         self.K = K
         self.r = r
@@ -31,6 +31,7 @@ class ContinuousInstallmentOptionPricer:
         self.T = T
         self.q = q
         self.num_steps = 10
+        self.phi = phi
 
     def _theta(self, l):
         poly = [0.5 * self.vola ** 2, self.r - self.d - 0.5 * self.vola ** 2, -(l + self.r)]
@@ -42,8 +43,7 @@ class ContinuousInstallmentOptionPricer:
 
     def _lct_stop(self, l):
         theta = self._theta(l)
-
-        a = 2*(l + self.d)*self.q
+        a = 2*(l + self.d)*self.q*self.phi
         b = l*(1-theta[1])*self.K*self.vola**2
         return (a/b)**(1/theta[0])*self.K
 
@@ -55,10 +55,10 @@ class ContinuousInstallmentOptionPricer:
             val *= (self.S/self.K)**theta[i]
             return val
 
-        if (self.S < self.K):
+        if (self.phi*self.S < self.phi*self.K):
             return xi(0, l)
         else:
-            return xi(1, l) + l*self.S/(l+self.d) - l*self.K/(l+self.r)
+            return xi(1, l) + self.phi* l*self.S/(l+self.d) - l*self.K/(l+self.r)
 
     def _lct_value(self, l):
         stop = self._lct_stop(l)
@@ -76,6 +76,6 @@ class ContinuousInstallmentOptionPricer:
     def stop_bound(self, t):
         return gaver_lct(self._lct_stop, t, self.num_steps)
 
-    def call(self):
+    def value(self):
         return gaver_lct(self._lct_value_van, self.T, self.num_steps)
 
