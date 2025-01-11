@@ -1,6 +1,6 @@
 import numpy as np
 
-from discrete_pricer import InstallmentCallPricer, BermudaPutPricer, call
+from discrete_pricer import InstallmentCallPricer, BermudaPutPricer, call, put
 from continuous_pricer import ContinuousInstallmentOptionPricer
 
 def single_check_fixed_q(S, K, r, d, vola, T, q, n):
@@ -57,7 +57,9 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
 
     p = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, 0, -1)
-    print("vlaue = ", p.vanilla_value())
+    print("vanilla value = ", p.vanilla_value())
+    p2 = put(S, K, r, d, vola, T)
+    print("BS value = ", p2)
 
     for q in [1, 3, 8]:
         print("q = ", q)

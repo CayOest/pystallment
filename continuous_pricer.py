@@ -36,16 +36,20 @@ class ContinuousInstallmentOptionPricer:
     def _theta(self, l):
         poly = [0.5 * self.vola ** 2, self.r - self.d - 0.5 * self.vola ** 2, -(l + self.r)]
         theta = np.roots(poly)
-        if self.phi*theta[0] < 0:
+        if theta[0] < 0:
             theta = np.flip(theta)
 
         return theta
 
     def _lct_stop(self, l):
         theta = self._theta(l)
-        a = 2*(l + self.d)*self.q*self.phi
-        b = l*(1-theta[1])*self.K*self.vola**2
-        return (a/b)**(1/theta[0])*self.K
+        a = 2*(l + self.d)*self.q
+        if self.phi==1:
+            b = l*(1-theta[1])*self.K*self.vola**2
+            return (a/b)**(1/theta[0])*self.K
+        else:
+            b = l*(theta[0]-1)*self.K*self.vola**2
+            return (a / b) ** (1 / theta[1]) * self.K
 
     def _lct_value_van(self, l):
         theta = self._theta(l)
@@ -55,20 +59,28 @@ class ContinuousInstallmentOptionPricer:
             val *= (self.S/self.K)**theta[i]
             return val
 
-        if (self.phi*self.S < self.phi*self.K):
-            return xi(0, l)
+        if self.phi == 1:
+            if self.S < self.K:
+                return xi(0, l)
+            else:
+                return xi(1, l) + self.phi*(l*self.S/(l+self.d) - l*self.K/(l+self.r))
         else:
-            return xi(1, l) + self.phi*(l*self.S/(l+self.d) - l*self.K/(l+self.r))
+            if self.S < self.K:
+                return xi(0, l) + self.phi*(l*self.S/(l+self.d) - l*self.K/(l+self.r))
+            else:
+                return xi(1, l)
 
     def _lct_value(self, l):
         stop = self._lct_stop(l)
         theta = self._theta(l)
         if self.phi*self.S > self.phi*stop:
             val = self._lct_value_van(l)
-            # print("vanilla = ", val)
             if self.q > 0:
-                val += self.q*theta[0] * (self.S / stop)**theta[1] / (l + self.r) / (theta[0]-theta[1])
-                val -= self.q/(l + self.r)
+                val -= self.q / (l + self.r)
+                if self.phi == 1:
+                    val += self.q*theta[0] * (self.S / stop)**theta[1] / (l + self.r) / (theta[0]-theta[1])
+                else:
+                    val -= self.q*theta[1] * (self.S / stop)**theta[0] / (l + self.r) / (theta[0]-theta[1])
         else:
             val = 0
 
