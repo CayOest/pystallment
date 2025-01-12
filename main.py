@@ -42,13 +42,13 @@ import matplotlib.pyplot as plt
 
 # Beispiel-Nutzung
 if __name__ == "__main__":
-    S = 1
-    K = 1
-    r = 0.02
-    d = 0.00
+    S = 104
+    K = 100
+    r = 0.05
+    d = 0.04
     vola = 0.2
     T = 1
-    q = 1
+    q = 3
 
     p = FDMPricer(S, K, r, d, vola, T, q=q)
     price = p.calc()
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     print("check = ", check)
 
     p.phi = -1
-    p.q = 2
+    p.q = q
     iput = p.value()
     print("Installment Put = ", iput)
     print("check = ", iput-price)

@@ -39,14 +39,14 @@ class FDMPricer:
         self.d = d
         self.vola = vola
         self.T = T
-        self.M = 100
-        self.N = 100
+        self.M = 1000
+        self.N = 1600
         self.q = q
 
     def _calc(self):
         # Parameter
         S_max = max(3 * self.spot, 3 * self.K)  # Maximale Preisgrenze dynamisch anpassen
-
+        S_max = 200
         # Diskretisierung
         delta_S = S_max / self.M  # Schrittweite im Aktienkurs
         delta_t = self.T / self.N  # Zeitschrittweite
@@ -68,7 +68,8 @@ class FDMPricer:
         # Rückwärtsinduktion
         V = payoff.copy()
         for n in range(self.N - 1, -1, -1):  # Zeitrückwärts iterieren
-            V_inner = thomas_algorithm(a[1:], b, c[:-1], V[1:self.M])  # Lösen mit Thomas-Algorithmus
+            V_ = V[1:self.M] - self.q * delta_t
+            V_inner = thomas_algorithm(a[1:], b, c[:-1], V_)  # Lösen mit Thomas-Algorithmus
 
             # Frühzeitige Ausübungsbedingung berücksichtigen
             for j in range(1, self.M):
