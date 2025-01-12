@@ -2,6 +2,7 @@ import numpy as np
 
 from discrete_pricer import InstallmentCallPricer, BermudaPutPricer, call, put
 from continuous_pricer import ContinuousInstallmentOptionPricer
+from fdm_pricer import FDMPricer
 
 def single_check_fixed_q(S, K, r, d, vola, T, q, n):
     print("n = ", n)
@@ -41,12 +42,30 @@ import matplotlib.pyplot as plt
 
 # Beispiel-Nutzung
 if __name__ == "__main__":
-    S = 96
-    K = 100
-    r = 0.05
-    d = 0.04
+    S = 1
+    K = 1
+    r = 0.02
+    d = 0.00
     vola = 0.2
     T = 1
+    q = 1
+
+    p = FDMPricer(S, K, r, d, vola, T, q=q)
+    price = p.calc()
+    print("American Put = ", price)
+
+    p = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, q=r*K, phi=+1)
+    call = p.value()
+    print("Installment Call = ", call)
+
+    check = price + S - call - K
+    print("check = ", check)
+
+    p.phi = -1
+    p.q = 2
+    iput = p.value()
+    print("Installment Put = ", iput)
+    print("check = ", iput-price)
 
     # n = 2
     #single_check_fixed_q(S, K, r, d, vola, T, q, 2)
