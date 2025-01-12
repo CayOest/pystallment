@@ -42,15 +42,15 @@ import matplotlib.pyplot as plt
 
 # Beispiel-Nutzung
 if __name__ == "__main__":
-    S = 104
-    K = 100
-    r = 0.05
-    d = 0.04
+    S = 1
+    K = 1
+    r = 0.02
+    d = 0.00
     vola = 0.2
     T = 1
-    q = 3
+    q = 0
 
-    p = FDMPricer(S, K, r, d, vola, T, q=q)
+    p = FDMPricer(S, K, r, d, vola, T)
     price = p.calc()
     print("American Put = ", price)
 

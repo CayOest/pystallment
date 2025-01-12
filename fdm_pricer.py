@@ -32,21 +32,20 @@ def thomas_algorithm(a, b, c, d):
     return x
 
 class FDMPricer:
-    def __init__(self, S, K, r, d, vola, T, q = 0):
+    def __init__(self, S, K, r, d, vola, T):
         self.spot = S
         self.K = K
         self.r = r
         self.d = d
         self.vola = vola
         self.T = T
-        self.M = 1000
-        self.N = 1600
-        self.q = q
+        self.M = 100
+        self.N = 100
 
     def _calc(self):
         # Parameter
         S_max = max(3 * self.spot, 3 * self.K)  # Maximale Preisgrenze dynamisch anpassen
-        S_max = 200
+
         # Diskretisierung
         delta_S = S_max / self.M  # Schrittweite im Aktienkurs
         delta_t = self.T / self.N  # Zeitschrittweite
@@ -61,15 +60,33 @@ class FDMPricer:
         c = np.zeros(self.M - 1)
         for j in range(1, self.M):
             S_j = S[j]
-            a[j - 1] = (-0.5 * self.vola ** 2 * S_j ** 2 / delta_S ** 2 + (self.r-self.d) * S_j / (2 * delta_S)) * delta_t if j > 1 else 0
-            b[j - 1] = 1 + self.vola ** 2 * S_j ** 2 / delta_S ** 2 * delta_t + self.r * delta_t
-            c[j - 1] = (-0.5 * self.vola ** 2 * S_j ** 2 / delta_S ** 2 - (self.r-self.d) * S_j / (2 * delta_S)) * delta_t if j < self.M - 1 else 0
+            a[j - 1] = - 0.5*self.vola ** 2 * S_j ** 2 / delta_S ** 2 + 0.5*self.r * S_j / (delta_S)
+            b[j - 1] = self.vola ** 2 * S_j ** 2 / (delta_S ** 2)
+            c[j - 1] = - 0.5 * self.vola ** 2 * S_j ** 2 / delta_S ** 2 - self.r * S_j / (delta_S)
+
+        # Crank-Nicolson-Matrizen
+        L_a = -0.5 * a * delta_t  # Untere Diagonale von L
+        L_b = 1 - 0.5 * b *delta_t # Hauptdiagonale von L
+        L_c = -0.5 * c * delta_t  # Obere Diagonale von L
+
+        R_a = 0.5 * a * delta_t # Untere Diagonale von R
+        R_b = 1 + 0.5 * b * delta_t  # Hauptdiagonale von R
+        R_c = 0.5 * c * delta_t # Obere Diagonale von R
 
         # Rückwärtsinduktion
         V = payoff.copy()
         for n in range(self.N - 1, -1, -1):  # Zeitrückwärts iterieren
-            V_ = V[1:self.M] - self.q * delta_t
-            V_inner = thomas_algorithm(a[1:], b, c[:-1], V_)  # Lösen mit Thomas-Algorithmus
+            # Rechte Seite berechnen
+            right_hand_side = np.zeros(self.M - 1)
+            for j in range(1, self.M):
+                right_hand_side[j - 1] = (
+                    (R_a[j - 2] if j > 1 else 0) * V[j - 1]
+                    + R_b[j - 1] * V[j]
+                    + (R_c[j - 1] if j < self.M - 1 else 0) * V[j + 1]
+                )
+
+            # Lösen von L · V^{n+1} = rechte Seite
+            V_inner = thomas_algorithm(L_a[1:], L_b, L_c[:-1], right_hand_side)
 
             # Frühzeitige Ausübungsbedingung berücksichtigen
             for j in range(1, self.M):
