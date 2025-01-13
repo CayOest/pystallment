@@ -32,7 +32,7 @@ def thomas_algorithm(a, b, c, d):
     return x
 
 class FDMPricer:
-    def __init__(self, S, K, r, d, vola, T, q = 0):
+    def __init__(self, S, K, r, d, vola, T, q = 0, phi=1):
         self.spot = S
         self.K = K
         self.r = r
@@ -42,18 +42,21 @@ class FDMPricer:
         self.M = 1000
         self.N = 1600
         self.q = q
+        self.phi = phi
+        self.stop = np.zeros(self.N+1)
 
     def _calc(self):
         # Parameter
         S_max = max(3 * self.spot, 3 * self.K)  # Maximale Preisgrenze dynamisch anpassen
-        S_max = 200
+        # S_max = 200
         # Diskretisierung
         delta_S = S_max / self.M  # Schrittweite im Aktienkurs
         delta_t = self.T / self.N  # Zeitschrittweite
         S = np.linspace(0, S_max, self.M + 1)  # Preisgitter
+        self.stop[self.N] = self.K
 
         # Payoff der amerikanischen Put-Option bei Fälligkeit
-        payoff = np.maximum(self.K - S, 0)
+        payoff = np.maximum(self.phi*(S-self.K), 0)
 
         # Matrix A-Koeffizienten gemäß der vollständigen Diskretisierung
         a = np.zeros(self.M - 1)
@@ -70,15 +73,32 @@ class FDMPricer:
         for n in range(self.N - 1, -1, -1):  # Zeitrückwärts iterieren
             V_ = V[1:self.M] - self.q * delta_t
             V_inner = thomas_algorithm(a[1:], b, c[:-1], V_)  # Lösen mit Thomas-Algorithmus
+            # Randbedingungen setzen
+            if self.phi == +1:
+                V[0] = 0  # Linke Randbedingung
+                V[-1] = S_max  # Rechte Randbedingung
+            else:
+                V[0] = self.K
+                V[-1] = 0
 
             # Frühzeitige Ausübungsbedingung berücksichtigen
-            for j in range(1, self.M):
-                V_inner[j - 1] = max(V_inner[j - 1], self.K - S[j])
+            # for j in range(1, self.M):
+            #     # V_inner[j - 1] = max(V_inner[j - 1], self.phi*( S[j] - self.K))
+            #     V_inner[j - 1] = max(V_inner[j - 1], 0)
 
             V[1:self.M] = V_inner
+            for j in range(self.M+1):
+                if V[j] < 0:
+                    if self.phi == 1:
+                        self.stop[n] = max(self.stop[n], S[j])
+                    else:
+                        if self.stop[n] == 0:
+                            self.stop[n] = S[j]
+                    V[j] = 0
 
         # Interpolation anpassen, um den exakten Spotpreis zu treffen
         option_price = np.interp(self.spot, S, V)
+        print("stop = ", self.stop)
         return option_price
 
     def calc(self):

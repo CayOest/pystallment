@@ -21,7 +21,7 @@ def gaver_lct(f, t, num_steps = 10):
     val = np.dot(wt, G)
     return val
 
-class ContinuousInstallmentOptionPricer:
+class LCTPricer:
     def __init__(self, S, K, r, d, vola, T, q, phi = 1):
         self.S = S
         self.K = K
@@ -30,7 +30,7 @@ class ContinuousInstallmentOptionPricer:
         self.vola = vola
         self.T = T
         self.q = q
-        self.num_steps = 10
+        self.num_steps = 4
         self.phi = phi
 
     def _theta(self, l):

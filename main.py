@@ -1,7 +1,7 @@
 import numpy as np
 
 from discrete_pricer import InstallmentCallPricer, BermudaPutPricer, call, put
-from continuous_pricer import ContinuousInstallmentOptionPricer
+from lct_pricer import LCTPricer
 from fdm_pricer import FDMPricer
 
 def single_check_fixed_q(S, K, r, d, vola, T, q, n):
@@ -40,69 +40,71 @@ def single_check_fixed_K(S, K, r, d, vola, T, n):
 
 import matplotlib.pyplot as plt
 
+def _check_formula(S, K, r, vola, T):
+    q = r*K
+    call_pricer = LCTPricer(S, K, r, 0, vola, T, q, phi=+1)
+    call_price = call_pricer.value()
+    print(f"Call Price, q = {q} = {call_price:.3f}")
+    put_pricer = FDMPricer(S, K, r, 0, vola, T, 0, phi=-1)
+    put_price = put_pricer.calc()
+    print(f"Put Price, = {put_price:.3f}")
+    check = put_price + S - call_price - K
+    print(f"Check = {check:.5f}")
+    print("Stop = ", put_pricer.stop)
+
 # Beispiel-Nutzung
 if __name__ == "__main__":
-    S = 104
+    S = 96
     K = 100
     r = 0.05
     d = 0.04
     vola = 0.2
     T = 1
-    q = 3
+    phi = -1
+    plot_boundaries = True
+    plot_discrete_boundaries = False
+    check_formula = True
 
-    p = FDMPricer(S, K, r, d, vola, T, q=q)
-    price = p.calc()
-    print("American Put = ", price)
+    if check_formula:
+        _check_formula(S, K, r, vola, T)
 
-    p = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, q=r*K, phi=+1)
-    call = p.value()
-    print("Installment Call = ", call)
+    if plot_boundaries:
+        # Plot initialisieren
+        plt.ion()  # Interaktive Plot-Anzeige einschalten
+        fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
 
-    check = price + S - call - K
-    print("check = ", check)
-
-    p.phi = -1
-    p.q = q
-    iput = p.value()
-    print("Installment Put = ", iput)
-    print("check = ", iput-price)
-
-    # n = 2
-    #single_check_fixed_q(S, K, r, d, vola, T, q, 2)
-    #single_check_fixed_K(S, K, r, d, vola, T, 2)
-
-    # Plot initialisieren
-    plt.ion()  # Interaktive Plot-Anzeige einschalten
-    fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
-
-    p = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, 0, -1)
-    print("vanilla value = ", p.vanilla_value())
-    p2 = put(S, K, r, d, vola, T)
-    print("BS value = ", p2)
+    print("BS price = ", call(S, K, r, d, vola, T))
 
     for q in [1, 3, 8]:
         print("q = ", q)
-        lctpricer = ContinuousInstallmentOptionPricer(S, K, r, d, vola, T, q, -1)
+        p = FDMPricer(S, K, r, d, vola, T, q=q, phi=phi)
+        price = p.calc()
+        print("FDM price = ", price)
+
+        lctpricer = LCTPricer(S, K, r, d, vola, T, q, phi)
         value = lctpricer.value()
-        print("value = ", value)
-        t = np.linspace(0.001, 0.999, 1000)
-        sb = [lctpricer.stop_bound(T-t[i]) for i in range(len(t))]
+        print("LCT price = ", value)
 
-        ax.plot(t, sb, label=f'q = {q}')  # Linie hinzufügen
-        ax.legend()  # Legende aktualisieren
-        plt.draw()  # Zeichne den aktuellen Plot
-        plt.pause(0.1)
+        if plot_boundaries:
+            t = np.linspace(0.001, 0.999, 1000)
+            sb = [lctpricer.stop_bound(T-t[i]) for i in range(len(t))]
 
-        values = {}
-        for n in range(3, 3):
-            (c, p, check, call_stop, put_stop) = single_check_fixed_K(S, K, r, d, vola, T, n)
-
-            # Plotten
-            t = np.arange(T/n, T + T/n, T/n)
-            ax.plot(t, call_stop, label=f'q = {q}, n = {n}')  # Linie hinzufügen
+            ax.plot(t, sb, label=f'q = {q}')  # Linie hinzufügen
             ax.legend()  # Legende aktualisieren
             plt.draw()  # Zeichne den aktuellen Plot
             plt.pause(0.1)
+
+        if plot_discrete_boundaries:
+            values = {}
+            for n in range(3, 10):
+                (c, p, check, call_stop, put_stop) = single_check_fixed_K(S, K, r, d, vola, T, n)
+
+                # Plotten
+                t = np.arange(T/n, T + T/n, T/n)
+                ax.plot(t, call_stop, label=f'q = {q}, n = {n}')  # Linie hinzufügen
+                ax.legend()  # Legende aktualisieren
+                plt.draw()  # Zeichne den aktuellen Plot
+                plt.pause(0.1)
 
     # Interaktivität deaktivieren und finalen Plot anzeigen
     plt.ioff()
