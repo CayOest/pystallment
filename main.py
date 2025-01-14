@@ -38,32 +38,6 @@ def single_check_fixed_K(S, K, r, d, vola, T, n):
     q = K*(1-np.exp(-r*T/n))
     return single_check_fixed_q(S, K, r, d, vola, T, q, n)
 
-import matplotlib.pyplot as plt
-
-def _check_formula(S, K, r, vola, T):
-    q = r*K
-    call_pricer = FDMPricer(S, K, r, 0, vola, T, q, phi=+1)
-    call_price = call_pricer.calc()
-    print(f"Call Price, q = {q} = {call_price:.3f}")
-    put_pricer = FDMPricer(S, K, r, 0, vola, T, 0, phi=-1)
-    put_pricer.is_american = True
-    put_price = put_pricer.calc()
-    print(f"Put Price, = {put_price:.3f}")
-    check = put_price + S - call_price - K
-    print(f"Check = {check:.5f}")
-    print("Stop = ", call_pricer.stop)
-    print("Ex = ", put_pricer.ex_bound)
-    plt.ion()  # Interaktive Plot-Anzeige einschalten
-    fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
-
-    ax.plot( call_pricer.stop, label=f'stop')  # Linie hinzufügen
-    ax.legend()  # Legende aktualisieren
-    plt.draw()  # Zeichne den aktuellen Plot
-    plt.pause(0.1)
-    ax.plot(put_pricer.ex_bound, label=f'ex')  # Linie hinzufügen
-    ax.legend()  # Legende aktualisieren
-    plt.draw()  # Zeichne den aktuellen Plot
-    plt.pause(0.1)
 
 # Beispiel-Nutzung
 if __name__ == "__main__":
@@ -76,10 +50,6 @@ if __name__ == "__main__":
     phi = +1
     plot_boundaries = False
     plot_discrete_boundaries = False
-    check_formula = True
-
-    if check_formula:
-        _check_formula(S, K, r, vola, T)
 
     if plot_boundaries:
         # Plot initialisieren
