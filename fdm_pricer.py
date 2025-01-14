@@ -39,11 +39,13 @@ class FDMPricer:
         self.d = d
         self.vola = vola
         self.T = T
-        self.M = 1000
-        self.N = 1600
+        self.M = 100000
+        self.N = 16000
         self.q = q
         self.phi = phi
         self.stop = np.zeros(self.N+1)
+        self.ex_bound = np.zeros(self.N+1)
+        self.is_american = False
 
     def _calc(self):
         # Parameter
@@ -54,6 +56,7 @@ class FDMPricer:
         delta_t = self.T / self.N  # Zeitschrittweite
         S = np.linspace(0, S_max, self.M + 1)  # Preisgitter
         self.stop[self.N] = self.K
+        self.ex_bound[self.N] = self.K
 
         # Payoff der amerikanischen Put-Option bei Fälligkeit
         payoff = np.maximum(self.phi*(S-self.K), 0)
@@ -82,9 +85,11 @@ class FDMPricer:
                 V[-1] = 0
 
             # Frühzeitige Ausübungsbedingung berücksichtigen
-            # for j in range(1, self.M):
-            #     # V_inner[j - 1] = max(V_inner[j - 1], self.phi*( S[j] - self.K))
-            #     V_inner[j - 1] = max(V_inner[j - 1], 0)
+            if self.is_american:
+                for j in range(0, self.M-1):
+                    if V_inner[j] < self.phi*(S[j] - self.K):
+                        self.ex_bound[n] = S[j]
+                        V_inner[j] = self.phi*( S[j] - self.K)
 
             V[1:self.M] = V_inner
             for j in range(self.M+1):

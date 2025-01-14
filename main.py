@@ -42,26 +42,39 @@ import matplotlib.pyplot as plt
 
 def _check_formula(S, K, r, vola, T):
     q = r*K
-    call_pricer = LCTPricer(S, K, r, 0, vola, T, q, phi=+1)
-    call_price = call_pricer.value()
+    call_pricer = FDMPricer(S, K, r, 0, vola, T, q, phi=+1)
+    call_price = call_pricer.calc()
     print(f"Call Price, q = {q} = {call_price:.3f}")
     put_pricer = FDMPricer(S, K, r, 0, vola, T, 0, phi=-1)
+    put_pricer.is_american = True
     put_price = put_pricer.calc()
     print(f"Put Price, = {put_price:.3f}")
     check = put_price + S - call_price - K
     print(f"Check = {check:.5f}")
-    print("Stop = ", put_pricer.stop)
+    print("Stop = ", call_pricer.stop)
+    print("Ex = ", put_pricer.ex_bound)
+    plt.ion()  # Interaktive Plot-Anzeige einschalten
+    fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
+
+    ax.plot( call_pricer.stop, label=f'stop')  # Linie hinzufügen
+    ax.legend()  # Legende aktualisieren
+    plt.draw()  # Zeichne den aktuellen Plot
+    plt.pause(0.1)
+    ax.plot(put_pricer.ex_bound, label=f'ex')  # Linie hinzufügen
+    ax.legend()  # Legende aktualisieren
+    plt.draw()  # Zeichne den aktuellen Plot
+    plt.pause(0.1)
 
 # Beispiel-Nutzung
 if __name__ == "__main__":
     S = 96
     K = 100
-    r = 0.05
+    r = 0.1
     d = 0.04
     vola = 0.2
     T = 1
-    phi = -1
-    plot_boundaries = True
+    phi = +1
+    plot_boundaries = False
     plot_discrete_boundaries = False
     check_formula = True
 
