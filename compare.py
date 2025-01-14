@@ -5,7 +5,7 @@ from discrete_pricer import InstallmentCallPricer, BermudaPutPricer
 import matplotlib.pyplot as plt
 
 def check_formula(S, K, r, vola, T, space_steps, time_steps, plot_boundaries=True):
-    print("Continuous Check")
+    print(f"Continuous Check, M = {space_steps}, N = {time_steps}")
     # price installment call with rate r*K
     call_pricer = FDMPricer(S, K, r, 0, vola, T, q=r*K, phi=+1)
     call_pricer.space_steps = space_steps
@@ -27,9 +27,8 @@ def check_formula(S, K, r, vola, T, space_steps, time_steps, plot_boundaries=Tru
 
     if plot_boundaries:
         t = np.linspace(0, T, time_steps+1)
-        print(len(t))
-        ax.plot( t, call_pricer.stop, label=f'stop', lw=5, color='red')  # Linie hinzufügen
-        ax.plot(t, put_pricer.ex_bound, label=f'ex', lw=1, color='blue')  # Linie hinzufügen
+        ax.plot( t, call_pricer.stop, label=f'stop, M={time_steps}, N={space_steps}', lw=5, color='red')  # Linie hinzufügen
+        ax.plot(t, put_pricer.ex_bound, label=f'ex, M={time_steps}, N={space_steps}', lw=1, color='blue')  # Linie hinzufügen
         ax.legend()  # Legende aktualisieren
         plt.draw()  # Zeichne den aktuellen Plot
         plt.pause(0.1)
@@ -61,23 +60,24 @@ def check_discrete(S, K, r, vola, T, plot_boundaries=True, n=8):
     print(100 * '*')
 
     if plot_boundaries:
-        ax.plot(t, call_pricer.stop, label=f'call', lw=5, color='pink')  # Linie hinzufügen
-        ax.plot(t, put_pricer.stop, label=f'put', lw=1, color='cyan')  # Linie hinzufügen
+        ax.plot(t, call_pricer.stop, label=f'call, n = {n}', lw=5, color='pink')  # Linie hinzufügen
+        ax.plot(t, put_pricer.stop, label=f'put, n = {n}', lw=1, color='cyan')  # Linie hinzufügen
         ax.legend()  # Legende aktualisieren
         plt.draw()  # Zeichne den aktuellen Plot
         plt.pause(0.1)
 
 if __name__ == "__main__":
     #option params
-    S = 50
+    S = 105
     K = 100
     r = 0.02
     vola = 0.2
     T = 1
 
     # fdm params
-    fdm_space_steps = 10000
-    fdm_time_steps = 1600
+    N = [3, 4]
+    fdm_space_steps = [10**i for i in N]
+    fdm_time_steps = 2000*T
 
     # discrete params
     n = [3, 5, 8]
@@ -92,7 +92,8 @@ if __name__ == "__main__":
         fig, ax = plt.subplots(figsize=(8, 6))  # Figur und Achse erstellen
 
     if test_continuous:
-        check_formula(S, K, r, vola, T, fdm_space_steps, fdm_time_steps, plot_boundaries)
+        for ss in fdm_space_steps:
+            check_formula(S, K, r, vola, T, ss, fdm_time_steps, plot_boundaries)
 
     if test_discrete:
         for n_ in n:
