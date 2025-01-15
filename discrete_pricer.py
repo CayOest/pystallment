@@ -48,15 +48,9 @@ def _twist( R):
         R_[-1, j] *= -1
     return R_
 
-class PricerBase(ABC):
-    def __init__(self, S, r, d, vola, t, K):
-        self.S = S
-        self.r = r
-        self.d = d
-        self.vola = vola
-        self.t = t
-        self.K = K
-        self.stop = None
+class DiscretePricer(ABC):
+    def __init__(self, option):
+        self.option = option
 
     @abstractmethod
     def _calc(self, S, t_, K_, S_, t_k):
@@ -77,12 +71,12 @@ class PricerBase(ABC):
         return res.root
 
     def _generate_stops(self):
-        stops = [self.K[-1]]
-        for k in range(len(self.t) - 2, -1, -1):
-            t_k = self.t[k]
-            K_next = self.K[k + 1:]
-            t_next = self.t[k + 1:]
-            stop = self._calc_stop(t_next, K_next, stops, t_k, self.K[k])
+        stops = [self.option.K[-1]]
+        for k in range(len(self.option.t) - 2, -1, -1):
+            t_k = self.option.t[k]
+            K_next = self.option.K[k + 1:]
+            t_next = self.option.t[k + 1:]
+            stop = self._calc_stop(t_next, K_next, stops, t_k, self.option.K[k])
             stops.insert(0, stop)
         return stops
 
@@ -92,17 +86,17 @@ class PricerBase(ABC):
 
     def price(self):
         self.stop = self._generate_stops()
-        return self._calc(self.S, self.t, self.K, self.stop, 0)
+        return self._calc(self.option.S, self.option.t, self.option.K, self.stop, 0)
 
 
-class InstallmentCallPricer(PricerBase):
+class InstallmentCallPricer(DiscretePricer):
     def _calc(self, S, t_, K_, S_, t_k):
         R_ = _gen_cov(t_)
-        dplus = [bs.d1(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k)[0] for i in range(len(t_))]
-        dminus = [bs.d2(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k)[1] for i in range(len(t_))]
-        val = S * np.exp(-self.d * (t_[-1] - t_k)) * _mvn_cdf(R_, dplus)
+        dplus = [bs.d1(S, S_[i], self.option.r, self.option.d, self.option.vola, t_[i] - t_k) for i in range(len(t_))]
+        dminus = [bs.d2(S, S_[i], self.option.r, self.option.d, self.option.vola, t_[i] - t_k) for i in range(len(t_))]
+        val = S * np.exp(-self.option.d * (t_[-1] - t_k)) * _mvn_cdf(R_, dplus)
         for i in range(len(t_)):
-            val -= np.exp(-self.r * (t_[i] - t_k)) * K_[i] * _mvn_cdf(R_[:i+1, :i+1], dminus[:i+1])
+            val -= np.exp(-self.option.r * (t_[i] - t_k)) * K_[i] * _mvn_cdf(R_[:i+1, :i+1], dminus[:i+1])
         return val
 
     def _calc_stop(self, t_, K_, S_, t_k, K_k):
@@ -111,17 +105,20 @@ class InstallmentCallPricer(PricerBase):
         return self._find_stop(f, S_)
 
 
-class BermudaPutPricer(PricerBase):
+class BermudaPricer(DiscretePricer):
+    def __init__(self, bermuda_option):
+        super().__init__(bermuda_option)
+
     def _calc(self, S, t_, K_, S_, t_k):
         R_ = _gen_cov(t_)
-        dplus = [bs.d1(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k) for i in range(len(t_))]
-        dminus = [bs.d2(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k) for i in range(len(t_))]
-        val = S * np.exp(-self.d * (t_[-1] - t_k)) * (_mvn_cdf(R_, dplus) - 1)
+        dplus = [bs.d1(S, S_[i], self.option.r, self.option.d, self.option.vola, t_[i] - t_k) for i in range(len(t_))]
+        dminus = [bs.d2(S, S_[i], self.option.r, self.option.d, self.option.vola, t_[i] - t_k) for i in range(len(t_))]
+        val = S * np.exp(-self.option.d * (t_[-1] - t_k)) * (_mvn_cdf(R_, dplus) - 1)
         for i in range(len(t_)):
             dminus_ = dminus[:i+1].copy()
             dminus_[-1] *= -1
             R__ = _twist(R_[:i+1, :i+1])
-            val += np.exp(-self.r * (t_[i] - t_k)) * K_[i] * _mvn_cdf(R__, dminus_)
+            val += np.exp(-self.option.r * (t_[i] - t_k)) * K_[i] * _mvn_cdf(R__, dminus_)
         return val
 
     def _calc_stop(self, t_, K_, S_, t_k, K_k):
