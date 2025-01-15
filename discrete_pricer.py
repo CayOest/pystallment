@@ -1,11 +1,14 @@
-import math
+from abc import ABC, abstractmethod
 
+import math
 import numpy as np
 from scipy.stats import norm, multivariate_normal
 from scipy.optimize import root_scalar
-from abc import ABC, abstractmethod
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
 import black_scholes as bs
+import option as opt
 
 def _mvn_cdf(cov, y):
     if len(y) == 1:
@@ -58,7 +61,6 @@ class DiscretePricer(ABC):
         pass
 
     def _find_bracket(self, f, guess):
-        print(f(guess))
         a = 0.1
         while( a < 1.0 and f( (1-a)*guess )*f( (1+a)*guess ) > 0):
             a += 0.1
@@ -127,30 +129,67 @@ class BermudaPricer(DiscretePricer):
 
         return self._find_stop(f, S_)
 
-class RichardsonPricer():
-    def __init__(self, S, K, r, d, vola, T, q, phi):
-        self.S = S
-        self.K = K
-        self.r = r
-        self.d = d
-        self.vola = vola
-        self.T = T
-        self.q = q
-        self.phi = phi
-        self.n = 3
+def option_value(option):
+    return bs.option_value(option.S, option.K, option.r, option.d, option.vola, option.t, option.phi)
+
+class ExtrapolationPricer:
+    def __init__(self, option, n, style = 'inst', interpol = 'poly'):
+        self.option = option
+        self.n = n
+        self.style = style
+        self.interpol = interpol
+        self.plot = False
 
     def _weight(self, i):
-        return (-1)**(self.n-i) * i**(self.n-1)/math.factorial(i-1)/math.factorial(self.n-i)
+        val = (-1) ** (self.n - i)
+        for j in range(1, i+1):
+            val *= 1.0*i/j
+        for j in range(1, self.n-i+1):
+            val *= 1.0*i/j
+        return val
 
     def calc(self):
-        value = self._weight(1) * bs.option_value(self.S, self.K, self.r, self.d, self.vola, self.T, self.phi)
-        for i in range(2, self.n+1):
-            dt = self.T/i
-            t = np.linspace(dt, self.T, i)
-            q_ = np.ones(len(t))*self.q/self.r*(1-np.exp(-self.r*dt))
-            q_[-1] = self.K
-            ip = InstallmentCallPricer(self.S, self.r, self.d, self.vola, t, q_)
-            val = ip.price()
-            value += self._weight(i) * val
+        if self.style != 'inst':
+            raise TypeError("Style != inst not supported.")
 
-        return value
+        x = []
+        values = []
+        x.append(1)
+        bs_option = opt.Option(self.option.S, self.option.K[-1], self.option.r, self.option.d, self.option.vola, self.option.t, self.option.phi )
+        values.append(option_value(bs_option))
+        for k in range(2, self.n+1):
+            dt = self.option.t/k
+            t = np.linspace(dt, self.option.t, k)
+            q_ = (self.option.K[0]/self.option.r*(1-np.exp(-self.option.r*dt))*np.ones(len(t)-1)).tolist()
+            dopt = opt.make_installment_call(self.option.S, self.option.K[-1], self.option.r, self.option.d, self.option.vola, t, q_)
+            p = InstallmentCallPricer(dopt)
+            x.insert(0, 1/k)
+            values.insert(0, p.price())
+
+        if self.interpol == 'poly':
+            coeffs = np.polyfit(x, values, deg=3)
+            # Polynom aus Koeffizienten erstellen
+            polynom = np.poly1d(coeffs)
+
+            if self.plot:
+                # Werte für das Polynom berechnen
+                x_interp = np.linspace(0, 1, 100)  # Feinere x-Werte
+                y_interp = polynom(x_interp)
+
+                # Visualisierung
+                plt.scatter(x, values, label="Datenpunkte", color="red")
+                plt.plot(x_interp, y_interp, label=f"Polynom 2. Grades", linestyle="--")
+                plt.xlabel("x")
+                plt.ylabel("y")
+                plt.legend()
+                plt.show()
+
+            return polynom(0)
+
+        elif self.interpol == 'rich':
+            values = np.flip(values)
+            val = 0
+            for k in range(1, self.n+1):
+                val += self._weight(k)*values[k-1]
+
+            return val
