@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from scipy.stats import norm, multivariate_normal
 from scipy.optimize import root_scalar
@@ -135,3 +137,31 @@ class BermudaPutPricer(PricerBase):
             return self._calc(x, t_, K_, S_, t_k) - K_k + x
 
         return self._find_stop(f, S_)
+
+class RichardsonPricer():
+    def __init__(self, S, K, r, d, vola, T, q, phi):
+        self.S = S
+        self.K = K
+        self.r = r
+        self.d = d
+        self.vola = vola
+        self.T = T
+        self.q = q
+        self.phi = phi
+        self.n = 3
+
+    def _weight(self, i):
+        return (-1)**(self.n-i) * i**(self.n-1)/math.factorial(i-1)/math.factorial(self.n-i)
+
+    def calc(self):
+        value = self._weight(1) * option_value(self.S, self.K, self.r, self.d, self.vola, self.T, self.phi)
+        for i in range(2, self.n+1):
+            dt = self.T/i
+            t = np.linspace(dt, self.T, i)
+            q_ = np.ones(len(t))*self.q/self.r*(1-np.exp(-self.r*dt))
+            q_[-1] = self.K
+            ip = InstallmentCallPricer(self.S, self.r, self.d, self.vola, t, q_)
+            val = ip.price()
+            value += self._weight(i) * val
+
+        return value

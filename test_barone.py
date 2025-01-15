@@ -1,12 +1,12 @@
 from barone_pricer import BaronePricer
 
 if __name__ == "__main__":
-    S = 105
+    S = 90
     K = 100
-    r = 0.02
-    d = 0.00
+    r = 0.08
+    d = 0.0
     vola = 0.2
-    T = 1
+    T = 3
 
     pricer = BaronePricer(S, K, r, d, vola, T, -1)
     price = pricer.calc()

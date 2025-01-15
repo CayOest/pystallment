@@ -1,6 +1,6 @@
 import numpy as np
 from fdm_pricer import FDMPricer
-from discrete_pricer import InstallmentCallPricer, BermudaPutPricer
+from discrete_pricer import InstallmentCallPricer, BermudaPutPricer, RichardsonPricer
 
 import matplotlib.pyplot as plt
 
@@ -83,9 +83,16 @@ if __name__ == "__main__":
     n = [3, 5, 8]
 
     # what to test
-    plot_boundaries = True
+    plot_boundaries = False
     test_discrete = False
-    test_continuous = True
+    test_continuous = False
+    test_richardson = True
+
+    if test_richardson:
+        pricer = RichardsonPricer(S, K, r, d=0.0, vola=vola, T=T, phi=+1, q=r*K)
+        pricer.n =3
+        value = pricer.calc()
+        print("value = ", value)
 
     if plot_boundaries:
         plt.ion()  # Interaktive Plot-Anzeige einschalten

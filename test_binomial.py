@@ -10,7 +10,7 @@ if __name__ == "__main__":
     q = r*K
     vola = 0.2
     T = 1
-    N = 10000
+    N = 1000
     plot_boundaries = True
 
     pricer1 = BinomialPricer(S, K, r, d, vola, T, q, +1)
