@@ -5,12 +5,12 @@ import numpy as np
 from option import AmericanOption
 
 class BinomialPricer:
-    def __init__(self, option, num_steps = 1000, factor_correction='r-d'):
-        # factor_correction can be 'r-d' or '-d' or no correction
+    def __init__(self, option, num_steps = 1000, factor_adjustment='r-d'):
+        # factor_adjustment can be 'r-d' or '-d' or no correction
         self.option = option
         self.num_steps = num_steps
         self.is_american = isinstance(option, AmericanOption)
-        self.factor_correction = factor_correction
+        self.factor_adjustment = factor_adjustment
 
     def _init_bounds(self):
         self.stop_bound = np.zeros(self.num_steps + 1)
@@ -22,12 +22,12 @@ class BinomialPricer:
         up = np.exp(self.option.vola * np.sqrt(dt))
         do = 1 / up
 
-        if self.factor_correction == 'r-d':
+        if self.factor_adjustment == 'r-d':
             alfa = np.exp((self.option.r - self.option.d) * dt)
             up *= alfa
             do *= alfa
             p = (alfa - do) / (up - do)
-        elif self.factor_correction == '-d':
+        elif self.factor_adjustment == '-d':
             alfa = np.exp(- self.option.d * dt)
             up *= alfa
             do *= alfa

@@ -1,3 +1,5 @@
+import numbers
+
 import numpy as np
 
 class Option:
@@ -40,7 +42,11 @@ def make_installment_call(S, K, r, d, vola, t, q):
     return InstallmentOption(S, K, r, d, vola, t, q, +1)
 
 class BermudaOption(Option):
-    def __init__(self, S, r, d, vola, t, K, phi):
+    def __init__(self, S, r, d, vola, t, K_, phi):
+        if isinstance(K_, numbers.Number):
+            K = np.ones(len(t))*K_
+        else:
+            K = K_
         super().__init__(S, K, r, d, vola, t, phi)
 
 def make_bermuda_put(S, r, d, vola, t, K):
