@@ -5,22 +5,7 @@ from scipy.stats import norm, multivariate_normal
 from scipy.optimize import root_scalar
 from abc import ABC, abstractmethod
 
-# Funktionen außerhalb der Klasse
-def d1d2(S, K, r, d, vola, tau):
-    d1 = np.log(S / K) + (r - d + vola ** 2 / 2) * tau
-    d1 /= vola * np.sqrt(tau)
-    d2 = d1 - vola * np.sqrt(tau)
-    return d1, d2
-
-def option_value(S, K, r, d, vola, tau, phi):
-    d1, d2 = d1d2(S, K, r, d, vola, tau)
-    return phi * S * np.exp(-d * tau) * norm.cdf(phi * d1) - phi * K * np.exp(-r * tau) * norm.cdf(phi * d2)
-
-def call(S, K, r, d, vola, tau):
-    return option_value(S, K, r, d, vola, tau, +1)
-
-def put(S, K, r, d, vola, tau):
-    return option_value(S, K, r, d, vola, tau, -1)
+import black_scholes as bs
 
 def _mvn_cdf(cov, y):
     if len(y) == 1:
@@ -78,9 +63,16 @@ class PricerBase(ABC):
         """Abstrakte Methode für die spezifische Berechnung. Muss in abgeleiteten Klassen implementiert werden."""
         pass
 
+    def _find_bracket(self, f, guess):
+        print(f(guess))
+        a = 0.1
+        while( a < 1.0 and f( (1-a)*guess )*f( (1+a)*guess ) > 0):
+            a += 0.1
+        return [(1-a)*guess, (1+a)*guess]
+
     def _find_stop(self, f, S_):
         xtol = 1e-12
-        bracket = [0.8 * S_[0], 1.2 * S_[0]]
+        bracket = self._find_bracket(f, S_[0])
         res = root_scalar(f, method='brentq', bracket=bracket, xtol=xtol)
         return res.root
 
@@ -106,8 +98,8 @@ class PricerBase(ABC):
 class InstallmentCallPricer(PricerBase):
     def _calc(self, S, t_, K_, S_, t_k):
         R_ = _gen_cov(t_)
-        dplus = [d1d2(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k)[0] for i in range(len(t_))]
-        dminus = [d1d2(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k)[1] for i in range(len(t_))]
+        dplus = [bs.d1(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k)[0] for i in range(len(t_))]
+        dminus = [bs.d2(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k)[1] for i in range(len(t_))]
         val = S * np.exp(-self.d * (t_[-1] - t_k)) * _mvn_cdf(R_, dplus)
         for i in range(len(t_)):
             val -= np.exp(-self.r * (t_[i] - t_k)) * K_[i] * _mvn_cdf(R_[:i+1, :i+1], dminus[:i+1])
@@ -122,8 +114,8 @@ class InstallmentCallPricer(PricerBase):
 class BermudaPutPricer(PricerBase):
     def _calc(self, S, t_, K_, S_, t_k):
         R_ = _gen_cov(t_)
-        dplus = [d1d2(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k)[0] for i in range(len(t_))]
-        dminus = [d1d2(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k)[1] for i in range(len(t_))]
+        dplus = [bs.d1(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k) for i in range(len(t_))]
+        dminus = [bs.d2(S, S_[i], self.r, self.d, self.vola, t_[i] - t_k) for i in range(len(t_))]
         val = S * np.exp(-self.d * (t_[-1] - t_k)) * (_mvn_cdf(R_, dplus) - 1)
         for i in range(len(t_)):
             dminus_ = dminus[:i+1].copy()
@@ -154,7 +146,7 @@ class RichardsonPricer():
         return (-1)**(self.n-i) * i**(self.n-1)/math.factorial(i-1)/math.factorial(self.n-i)
 
     def calc(self):
-        value = self._weight(1) * option_value(self.S, self.K, self.r, self.d, self.vola, self.T, self.phi)
+        value = self._weight(1) * bs.option_value(self.S, self.K, self.r, self.d, self.vola, self.T, self.phi)
         for i in range(2, self.n+1):
             dt = self.T/i
             t = np.linspace(dt, self.T, i)
