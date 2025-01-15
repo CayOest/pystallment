@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     # what to test
     plot_boundaries = True
-    test_discrete = True
+    test_discrete = False
     test_continuous = True
 
     if plot_boundaries:
