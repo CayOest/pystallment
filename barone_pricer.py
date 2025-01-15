@@ -14,16 +14,12 @@ class BaronePricer:
         self.phi = phi
 
     def _find_stop(self, f):
-        # xtol = 1e-24
-
         bracket = [0.1 * self.K, 2.0 * self.K]
         res = root_scalar(
             f,
             method='brentq',
             bracket=bracket,
-         #    xtol=xtol
         )
-        print("converged = ", res.converged)
         return res.root
 
     def _calc(self):
@@ -39,15 +35,12 @@ class BaronePricer:
             return val
 
         S_ = self._find_stop(f)
-        print("S_ = ", S_)
         if self.S <= S_:
             return self.K - self.S
         else:
             val = discrete_pricer.put(self.S, self.K, self.r, self.d, self.vola, self.T)
             d1 = discrete_pricer.d1d2(S_, self.K, self.r, self.d, self.vola, self.T)[0]
             A1 = -S_/q1*(1-np.exp(-self.d*self.T)*norm.cdf(-d1))
-            print("q1 = ", q1)
-            print("A1 = ", A1)
             val += A1*(self.S/S_)**q1
             return val
 

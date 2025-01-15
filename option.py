@@ -1,4 +1,4 @@
-
+import numpy as np
 
 class Option:
     def __init__(self, S, K, r, d, vola, t, phi):
@@ -25,6 +25,9 @@ class Option:
                 f"  Time to Maturity (t): {self.t}\n"
                 f"  Option Type (phi): {option_type}")
 
+    def payoff(self, x):
+        return np.maximum(self.phi*(x - self.K), 0)
+
 class InstallmentOption(Option):
     def __init__(self, S, K_, r, d, vola, T, q, phi):
         if isinstance(q, list):
@@ -39,9 +42,10 @@ def make_installment_call(S, K, r, d, vola, t, q):
 class BermudaOption(Option):
     def __init__(self, S, r, d, vola, t, K, phi):
         super().__init__(S, K, r, d, vola, t, phi)
-        self.K = K
 
 def make_bermuda_put(S, r, d, vola, t, K):
     return BermudaOption(S, r, d, vola, t, K, -1)
 
-
+class AmericanOption(Option):
+    def __init__(self, S, K, r, d, vola, T, phi):
+        super().__init__(S, K, r, d, vola, T, phi)

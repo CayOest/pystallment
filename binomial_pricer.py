@@ -1,74 +1,112 @@
+import numbers
+
 import numpy as np
 
+from option import AmericanOption
+
 class BinomialPricer:
-    def __init__(self, S, K, r, d, vola, T, q, phi):
-        self.S = S
-        self.K = K
-        self.r = r
-        self.d = d
-        self.vola = vola
-        self.T = T
-        self.q = q
-        self.num_steps = 10000
-        self.phi = phi
-        self.is_american = True
+    def __init__(self, option, num_steps = 1000, factor_correction='r-d'):
+        # factor_correction can be 'r-d' or '-d' or no correction
+        self.option = option
+        self.num_steps = num_steps
+        self.is_american = isinstance(option, AmericanOption)
+        self.factor_correction = factor_correction
 
-    def _calc(self):
-        dt = self.T/self.num_steps
-
-        qi = self.q/self.r*(1-np.exp(-self.r*dt))
-        self.stop_bound = np.zeros(self.num_steps+1)
+    def _init_bounds(self):
+        self.stop_bound = np.zeros(self.num_steps + 1)
         self.ex_bound = np.zeros(self.num_steps + 1)
+        self.stop_bound[-1] = self.option.K
+        self.ex_bound[-1] = self.option.K
 
-        up = np.exp(self.vola*np.sqrt(dt))
-        do = 1/up
+    def _get_up_down_p(self, dt):
+        up = np.exp(self.option.vola * np.sqrt(dt))
+        do = 1 / up
 
-        correction = 1
-        if correction == 1:
-            # correction 1
-            alfa = np.exp((self.r - self.d) * dt)
+        if self.factor_correction == 'r-d':
+            alfa = np.exp((self.option.r - self.option.d) * dt)
             up *= alfa
             do *= alfa
             p = (alfa - do) / (up - do)
-        else:
-            # correction 2
-            alfa = np.exp(- self.d * dt)
+        elif self.factor_correction == '-d':
+            alfa = np.exp(- self.option.d * dt)
             up *= alfa
             do *= alfa
-            p = (alfa*np.exp(self.r*dt) - do) / (up - do)
+            p = (alfa * np.exp(self.option.r * dt) - do) / (up - do)
+        else:
+            pass
 
-        S_ = np.ones(self.num_steps+1)
-        n = self.num_steps
-        for i in range(self.num_steps+1):
-            S_[i] = up**(n-i) * do**i * self.S
+        return (up, do, p)
 
-        V = np.maximum(self.phi*(S_-self.K), 0)
+    def _generate_prices(self, k, up, do):
+        prices = np.ones(k)
+        for i in range(k):
+            prices[i] = up ** (k - i - 1) * do ** i * self.option.S
+        return prices
+    
+    def _check_stop_event(self, step, Vi, Si):
+        if Vi <= 0:  # stop event
+            Vi = 0
+            if self.option.phi == -1:
+                self.stop_bound[step] = Si
+            else:
+                if self.stop_bound[step] == 0:
+                    self.stop_bound[step] = Si
 
-        self.stop_bound[-1] = self.K
-        self.ex_bound[-1] = self.K
+        if self.is_american:
+            exercise = self.option.payoff(Si)
+            if Vi <= exercise:  # exercise event
+                Vi = exercise
+                if self.ex_bound[step] == 0:
+                    self.ex_bound[step] = Si
+        return Vi
+
+    def _get_ttm(self):
+        if hasattr(self.option, "T"):
+            if isinstance(self.option.T, numbers.Number):
+                return self.option.T
+            elif hasattr(self.option.T, "__get_item__"):
+                return self.option.T[-1]
+        elif hasattr(self.option, "t"):
+            print(self.option.t)
+            if isinstance(self.option.t, numbers.Number):
+                return self.option.t
+            elif hasattr(self.option.t, "__get_item__"):
+                return self.option.t[-1]
+
+        raise TypeError("Could not determine time to maturity from option")
+
+    def _get_installment_rate(self):
+        q = 0
+        if hasattr(self.option, "q"):
+            if isinstance(self.option.q, float):
+                q = self.option.q
+        return q
+
+    def _calc(self):
+        # get parameters
+        T = self._get_ttm()
+        dt = T/self.num_steps
+        up, do, p = self._get_up_down_p(dt)
+
+        # build price tree
+        prices = self._generate_prices(self.num_steps+1, up, do)
+        V = self.option.payoff(prices)
+
+        # get optional installment rate
+        qdt = self._get_installment_rate()*dt
+
+        # discount factor
+        df = np.exp(-self.option.r*dt)
 
         for step in range(self.num_steps-1, -1, -1):
-            for i in range(step+1):
-                S_[i] = up**(step-i) * do**i * self.S
+            prices = self._generate_prices(step+1, up, do)
 
             for i in range(step + 1):
-                V[i] = np.exp(-self.r*dt)*(p*V[i] + (1-p)*V[i+1] - self.q * dt)
-                if V[i] <= 0: # stop event
-                    V[i] = 0
-                    if self.phi == -1:
-                        self.stop_bound[step] = S_[i]
-                    else:
-                        if self.stop_bound[step] == 0:
-                            self.stop_bound[step] = S_[i]
-
-                if self.is_american:
-                    exercise = self.phi*(S_[i]-self.K)
-                    if V[i] <= exercise: #exercise event
-                        V[i] = exercise
-                        if self.ex_bound[step] == 0:
-                            self.ex_bound[step] = S_[i]
+                V[i] = df*(p*V[i] + (1-p)*V[i+1] - qdt)
+                V[i] = self._check_stop_event(step, V[i], prices[i])
 
         return V[0]
 
     def calc(self):
+        self._init_bounds()
         return self._calc()
