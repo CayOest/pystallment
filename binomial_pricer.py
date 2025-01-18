@@ -15,8 +15,8 @@ class BinomialPricer:
     def _init_bounds(self):
         self.stop_bound = np.zeros(self.num_steps + 1)
         self.ex_bound = np.zeros(self.num_steps + 1)
-        self.stop_bound[-1] = self.option.K
-        self.ex_bound[-1] = self.option.K
+        self.stop_bound[-1] = self.option.K[-1]
+        self.ex_bound[-1] = self.option.K[-1]
 
     def _get_up_down_p(self, dt):
         up = np.exp(self.option.vola * np.sqrt(dt))
@@ -67,7 +67,6 @@ class BinomialPricer:
             elif hasattr(self.option.T, "__get_item__"):
                 return self.option.T[-1]
         elif hasattr(self.option, "t"):
-            print(self.option.t)
             if isinstance(self.option.t, numbers.Number):
                 return self.option.t
             elif hasattr(self.option.t, "__get_item__"):
@@ -80,6 +79,9 @@ class BinomialPricer:
         if hasattr(self.option, "q"):
             if isinstance(self.option.q, float):
                 q = self.option.q
+        elif hasattr(self.option, "K"):
+            if isinstance(self.option.K, list):
+                q = self.option.K[0]
         return q
 
     def _calc(self):
@@ -92,17 +94,16 @@ class BinomialPricer:
         prices = self._generate_prices(self.num_steps+1, up, do)
         V = self.option.payoff(prices)
 
-        # get optional installment rate
-        qdt = self._get_installment_rate()*dt
-
         # discount factor
         df = np.exp(-self.option.r*dt)
 
+        # get optional installment rate
+        qi = self._get_installment_rate()/self.option.r*(1-df)
         for step in range(self.num_steps-1, -1, -1):
             prices = self._generate_prices(step+1, up, do)
 
             for i in range(step + 1):
-                V[i] = df*(p*V[i] + (1-p)*V[i+1] - qdt)
+                V[i] = df*(p*V[i] + (1-p)*V[i+1]) - qi
                 V[i] = self._check_stop_event(step, V[i], prices[i])
 
         return V[0]

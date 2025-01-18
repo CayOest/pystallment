@@ -3,6 +3,7 @@ import numpy as np
 
 import discrete_pricer as dp
 import option as opt
+import test_data as td
 
 @pytest.mark.parametrize("S, expected", [(95, 9.924985820040824),(100, 7.4345679279511785),(105, 5.455621099180533)])
 def test_simple_2_bermuda_var_spot(S, expected):
@@ -206,22 +207,7 @@ def test_formula(S, r):
     for i in range(len(call_pricer.stop)):
         assert call_pricer.stop[i] == pytest.approx(put_pricer.stop[i], rel=1e-3)
 
-
-anton_inst_call = [
-# (q, S, Gaver, Krishni) with T = 1, K = 100, r = 0.03, d = 0.05, vola = 0.2
-(1,	95,	3.7072,	3.7069),
-(1,	105,	8.3995,	8.3993),
-(1,	115,	14.8531,	14.8531),
-(3,	95,	2.2283,	2.2266),
-(3,	105,	6.6388,	6.6379),
-(3,	115,	12.969,	12.9686),
-(6,	95,	0.6761,	0.6703),
-(6,	105,	4.2752,	4.2723),
-(6,	115,	10.254,	10.2527)
-
-]
-
-@pytest.mark.parametrize("q, S, gaver, krishni", anton_inst_call)
+@pytest.mark.parametrize("q, S, gaver, krishni", td.anton_inst_call)
 def test_extrapolation(q, S, gaver, krishni):
     K  = 100
     r = 0.03
@@ -239,16 +225,24 @@ def test_extrapolation(q, S, gaver, krishni):
         val = pricer.calc()
         print(f"{m} = {val:.3f}")
 
-kimura_inst_call = [
-    # (q, S, Euler, Gaver) with T = 1, K = 100, r = 0.03, d = 0.05, vola = 0.2
-(1,	95,	3.7071,	3.6841),
-(1, 105,	8.3994,	8.3871),
-(1, 115,	14.853,	14.8471),
-(3,	95,	2.228,	2.2039),
-(3, 105,	6.6385,	6.621),
-(3, 115,	12.9687,	12.9585),
-(6,	95,	0.6754,	0.684),
-(6, 105,	4.2745,	4.2725),
-(6, 115,	10.2533,	10.2489)
-]
+class ExtrapolationTest:
+    def setup_method(self):
+        self.values = {}
 
+    @pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
+    def test_extrapolation_ciurlia(self, vola, S, T, q, CNFD):
+        K = 100
+        r = 0.05
+        d = 0.04
+
+        print(f"CNFD = {CNFD:.3f}")
+
+        methods = [('poly', 3), ('poly', 5), ('rich', 3), ('rich', 4), ('rich', 5)]
+
+        values = {}
+        for m, n in methods:
+            option = opt.make_installment_call(S=S, K=K, r=r, d=d, vola=vola, t=T, q=q)
+            pricer = dp.ExtrapolationPricer(option, n, interpol=m)
+            val = pricer.calc()
+            print(f"{m}, n: {n} = {val:.3f}")
+            self.values[(m, n)].append(val)

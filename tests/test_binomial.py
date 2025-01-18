@@ -2,6 +2,8 @@ import pytest
 
 import binomial_pricer as bp
 import option as opt
+import black_scholes as bs
+import test_data as td
 
 @pytest.mark.parametrize("S, r, d, expected", [
     (95, 0.02, 0.00, 9.559604714303656),
@@ -52,4 +54,59 @@ def test_american_call(S, r, d, expected):
     price = pricer.calc()
     assert price == pytest.approx(expected, rel=1e-3)
 
+@pytest.mark.parametrize("S, r, d", [
+    (95, 0.02, 0.00),
+    (105, 0.05, 0.00),
+    (95, 0.1, 0.00),
+    (95, 0.02, 0.04),
+    (105, 0.05, 0.04),
+    (95, 0.1, 0.04),
+    ])
+def test_euro_option(S, r, d):
+    K = 100
+    vola = 0.2
+    T = 1
+    types = [-1, +1]
+    for phi in types:
+        option = opt.Option(S, K, r, d, vola, T, phi=phi)
+        pricer = bp.BinomialPricer(option)
+        price = pricer.calc()
+        expected = bs.option_value(S, K, r, d, vola, T, phi)
+        assert price == pytest.approx(expected, rel=1e-3)
 
+
+@pytest.mark.parametrize("q, S, gaver, krishni", td.anton_inst_call)
+def test_installment_call(q, S, gaver, krishni):
+    K = 100
+    r = 0.03
+    d = 0.05
+    vola = 0.2
+    T = 1
+
+    print(f"gaver = {gaver:.3f}")
+    print(f"krishni = {krishni:.3f}")
+
+    n_ = [1000, 2000, 4000, 8000]
+    n_ = [1000]
+    for n in n_:
+        option = opt.make_installment_call(S=S, K=K, r=r, d=d, vola=vola, t=T, q=q)
+        pricer = bp.BinomialPricer(option, n, factor_adjustment='r-d')
+        val = pricer.calc()
+        print(f"val ({n}) = {val:.3f}, diff = {abs(val-gaver)*100/max(val, gaver):.3f} %")
+
+
+@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
+def test_installment_call_ciurlia(vola, S, T, q, CNFD):
+    K = 100
+    r = 0.05
+    d = 0.04
+
+    print(f"CNFD = {CNFD:.3f}")
+
+    n_ = [1000]
+    for n in n_:
+        option = opt.make_installment_call(S=S, K=K, r=r, d=d, vola=vola, t=T, q=q)
+        pricer = bp.BinomialPricer(option, n, factor_adjustment='r-d')
+        val = pricer.calc()
+        print(f"val ({n}) = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")
+        assert val == pytest.approx(CNFD, abs=1e-2)

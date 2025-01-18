@@ -28,7 +28,7 @@ class Option:
                 f"  Option Type (phi): {option_type}")
 
     def payoff(self, x):
-        return np.maximum(self.phi*(x - self.K), 0)
+        return np.maximum(self.phi*(x - self.K[-1]), 0)
 
 class InstallmentOption(Option):
     def __init__(self, S, K_, r, d, vola, T, q, phi):

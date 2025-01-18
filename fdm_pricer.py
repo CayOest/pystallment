@@ -32,68 +32,61 @@ def thomas_algorithm(a, b, c, d):
     return x
 
 class FDMPricer:
-    def __init__(self, S, K, r, d, vola, T, q = 0, phi=1):
-        self.spot = S
-        self.K = K
-        self.r = r
-        self.d = d
-        self.vola = vola
-        self.T = T
-        self.space_steps = 10000
-        self.time_steps = 1000
-        self.q = q
-        self.phi = phi
-        self.is_american = False
+    def __init__(self, option):
+        self.option = option
+        self.space_steps = 1000
+        self.time_steps = int(1600*self.option.t)
 
     def _calc(self):
         # Parameter
+        self.is_american = False
         self.stop = np.zeros(self.time_steps + 1)
         self.ex_bound = np.zeros(self.time_steps + 1)
-        S_max = max(3 * self.spot, 3 * self.K)  # Maximale Preisgrenze dynamisch anpassen
+        S_max = max(3 * self.option.S, 3 * self.option.K[-1])  # Maximale Preisgrenze dynamisch anpassen
         # Diskretisierung
         delta_S = S_max / self.space_steps  # Schrittweite im Aktienkurs
-        delta_t = self.T / self.time_steps  # Zeitschrittweite
+        delta_t = self.option.t / self.time_steps  # Zeitschrittweite
         S = np.linspace(0, S_max, self.space_steps + 1)  # Preisgitter
-        self.stop[self.time_steps] = self.K
-        self.ex_bound[self.time_steps] = self.K
+        self.stop[self.time_steps] = self.option.K[-1]
+        self.ex_bound[self.time_steps] = self.option.K[-1]
 
         # Payoff der amerikanischen Put-Option bei Fälligkeit
-        payoff = np.maximum(self.phi*(S-self.K), 0)
+        payoff = np.maximum(self.option.phi*(S-self.option.K[-1]), 0)
 
         # Matrix A-Koeffizienten gemäß der vollständigen Diskretisierung
-        a = np.zeros(self.space_steps - 1)
+        a = np.zeros(self.space_steps -1 )
         b = np.zeros(self.space_steps - 1)
         c = np.zeros(self.space_steps - 1)
         for j in range(1, self.space_steps):
             S_j = S[j]
-            a[j - 1] = (-0.5 * self.vola ** 2 * S_j ** 2 / delta_S ** 2 + (self.r-self.d) * S_j / (2 * delta_S)) * delta_t if j > 1 else 0
-            b[j - 1] = 1 + self.vola ** 2 * S_j ** 2 / delta_S ** 2 * delta_t + self.r * delta_t
-            c[j - 1] = (-0.5 * self.vola ** 2 * S_j ** 2 / delta_S ** 2 - (self.r-self.d) * S_j / (2 * delta_S)) * delta_t if j < self.space_steps - 1 else 0
+            a[j - 1] = (-0.5 * self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 + (self.option.r-self.option.d) * S_j / (2 * delta_S)) * delta_t if j > 1 else 0
+            b[j - 1] = 1 + self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 * delta_t + self.option.r * delta_t
+            c[j - 1] = (-0.5 * self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 - (self.option.r-self.option.d) * S_j / (2 * delta_S)) * delta_t if j < self.space_steps - 1 else 0
 
         # Rückwärtsinduktion
         V = payoff.copy()
         for n in range(self.time_steps - 1, -1, -1):  # Zeitrückwärts iterieren
-            V_ = V[1:self.space_steps] - self.q * delta_t
-            V_inner = thomas_algorithm(a[1:], b, c[:-1], V_)  # Lösen mit Thomas-Algorithmus
+            V_ = V[1:self.space_steps] - self.option.K[0] * delta_t
+            V_inner = thomas_algorithm(a[1:], b, c[:self.space_steps-1], V_)  # Lösen mit Thomas-Algorithmus
             # Randbedingungen setzen
-            if self.phi == +1:
+            if self.option.phi == +1:
                 V[0] = 0  # Linke Randbedingung
                 V[-1] = S_max  # Rechte Randbedingung
             else:
-                V[0] = self.K
+                V[0] = self.option.K
                 V[-1] = 0
 
             # Frühzeitige Ausübungsbedingung berücksichtigen
             if self.is_american:
                 for j in range(0, self.space_steps-1):
-                    if V_inner[j] < self.phi*(S[j] - self.K):
+                    if V_inner[j] < self.option.phi*(S[j] - self.option.K):
                         self.ex_bound[n] = S[j]
-                        V_inner[j] = self.phi*( S[j] - self.K)
+                        V_inner[j] = self.option.phi*( S[j] - self.option.K)
 
             V[1:self.space_steps] = V_inner
             for j in range(self.space_steps+1):
                 if V[j] < 0:
-                    if self.phi == 1:
+                    if self.option.phi == 1:
                         self.stop[n] = max(self.stop[n], S[j])
                     else:
                         if self.stop[n] == 0:
@@ -101,7 +94,7 @@ class FDMPricer:
                     V[j] = 0
 
         # Interpolation anpassen, um den exakten Spotpreis zu treffen
-        option_price = np.interp(self.spot, S, V)
+        option_price = np.interp(self.option.S, S, V)
         return option_price
 
     def calc(self):
