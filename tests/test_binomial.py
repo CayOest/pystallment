@@ -89,7 +89,7 @@ def test_installment_call(q, S, gaver, krishni):
     n_ = [1000, 2000, 4000, 8000]
     n_ = [1000]
     for n in n_:
-        option = opt.make_installment_call(S=S, K=K, r=r, d=d, vola=vola, t=T, q=q)
+        option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
         pricer = bp.BinomialPricer(option, n, factor_adjustment='r-d')
         val = pricer.calc()
         print(f"val ({n}) = {val:.3f}, diff = {abs(val-gaver)*100/max(val, gaver):.3f} %")
@@ -105,7 +105,7 @@ def test_installment_call_ciurlia(vola, S, T, q, CNFD):
 
     n_ = [1000]
     for n in n_:
-        option = opt.make_installment_call(S=S, K=K, r=r, d=d, vola=vola, t=T, q=q)
+        option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
         pricer = bp.BinomialPricer(option, n, factor_adjustment='r-d')
         val = pricer.calc()
         print(f"val ({n}) = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")

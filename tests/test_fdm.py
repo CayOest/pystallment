@@ -14,7 +14,7 @@ def test_installment_call_ciurlia(vola, S, T, q, CNFD):
 
     n_ = [1000]
     for n in n_:
-        option = opt.make_installment_call(S=S, K=K, r=r, d=d, vola=vola, t=T, q=q)
+        option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
         pricer = fdm.FDMPricer(option)
         val = pricer.calc()
         print(f"val ({n}) = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")

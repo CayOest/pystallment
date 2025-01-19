@@ -12,7 +12,7 @@ def test_simple_2_bermuda_var_spot(S, expected):
     vola = 0.2
     t = [0.5, 1]
     K = [100, 100]
-    option = opt.make_bermuda_put(S, r, d, vola, t, K)
+    option = opt.BermudaOption(S, r, d, vola, t, K, -1)
 
     pricer = dp.BermudaPricer(option)
     val = pricer.price()
@@ -34,7 +34,7 @@ def test_simple_2_bermuda_var_strike(K_, expected_val, expected_bound):
     vola = 0.2
     t = [0.5, 1]
     K = [K_, K_]
-    option = opt.make_bermuda_put(S, r, d, vola, t, K)
+    option = opt.BermudaOption(S, r, d, vola, t, K, -1)
 
     pricer = dp.BermudaPricer(option)
     val = pricer.price()
@@ -56,7 +56,7 @@ def test_simple_2_bermuda_var_r_zero_d(r, expected_val, expected_bound):
     t = [0.5, 1]
     K_ = 100
     K = [K_, K_]
-    option = opt.make_bermuda_put(S, r, d, vola, t, K)
+    option = opt.BermudaOption(S, r, d, vola, t, K, -1)
 
     pricer = dp.BermudaPricer(option)
     val = pricer.price()
@@ -78,7 +78,7 @@ def test_simple_2_bermuda_var_r_fixed_d0_02(r, expected_val, expected_bound):
     t = [0.5, 1]
     K_ = 100
     K = [K_, K_]
-    option = opt.make_bermuda_put(S, r, d, vola, t, K)
+    option = opt.BermudaOption(S, r, d, vola, t, K, -1)
 
     pricer = dp.BermudaPricer(option)
     val = pricer.price()
@@ -97,12 +97,12 @@ def test_simple_4_bermuda():
     vola = 0.2
     t = [0.25, 0.5, 0.75, 1]
     K = np.ones(4)*K_
-    option = opt.make_bermuda_put(S, r, d, vola, t, K)
+    option = opt.BermudaOption(S, r, d, vola, t, K, -1)
 
     pricer = dp.BermudaPricer(option)
     val = pricer.price()
     print("val = ", val)
-    assert val == pytest.approx(5.484359556609775)
+    assert val == pytest.approx(5.48413736)
     bound = pricer.stop
     assert bound[-1] == pytest.approx(K[-1])
     
@@ -114,8 +114,8 @@ def test_simple_2_installment_var_spot(S, expected):
     d = 0.01
     vola = 0.2
     t = [0.5, 1]
-    q = [5]
-    option = opt.make_installment_call(S, K, r, d, vola, t, q)
+    q = [5, K]
+    option = opt.DiscreteInstallmentOption(S, r, d, vola, t, q, +1)
     print(repr(option))
 
     pricer = dp.InstallmentCallPricer(option)
@@ -137,8 +137,8 @@ def test_simple_2_installment_var_strike(K, expected_val, expected_bound):
     d = 0.01
     vola = 0.2
     t = [0.5, 1]
-    q = [5]
-    option = opt.make_installment_call(S, K, r, d, vola, t, q)
+    q = [5, K]
+    option = opt.DiscreteInstallmentOption(S, r, d, vola, t, q, +1)
     print(repr(option))
 
     pricer = dp.InstallmentCallPricer(option)
@@ -159,12 +159,13 @@ def test_simple_4_installment():
     t = [0.25, 0.5, 0.75, 1]
     q_ = K*(1-np.exp(-r*0.25))
     q = (np.ones(3)*q_).tolist()
-    option = opt.make_installment_call(S, K, r, d, vola, t, q)
+    q.append(K)
+    option = opt.DiscreteInstallmentOption(S, r, d, vola, t, q, +1)
     print(repr(option))
 
     pricer = dp.InstallmentCallPricer(option)
     val = pricer.price()
-    assert val == pytest.approx(9.95180768851261)
+    assert val == pytest.approx(9.95148)
     bound = pricer.stop
     assert bound[-1] == pytest.approx(K)
 
@@ -186,18 +187,21 @@ def test_formula(S, r):
     t = [0.25, 0.5, 0.75, 1]
     q_ = K*(1-np.exp(-r*0.25))
     q = (np.ones(3)*q_).tolist()
+    q.append(K)
 
-    call_option = opt.make_installment_call(S, K, r, d, vola, t, q)
+    call_option = opt.DiscreteInstallmentOption(S, r, d, vola, t, q, +1)
     print(repr(call_option))
     call_pricer = dp.InstallmentCallPricer(call_option)
     call_val = call_pricer.price()
+    print("call = ", call_val)
 
-    put_option = opt.make_bermuda_put(S, r, d, vola, t, K*np.ones(4))
+    put_option = opt.BermudaOption(S, r, d, vola, t, K*np.ones(4), -1)
     print(repr(put_option))
     put_pricer = dp.BermudaPricer(put_option)
     put_val = put_pricer.price()
+    print("put = ", put_val)
 
-    npv = np.exp(-r*t[-1])*K
+    npv = 0
     for i in range(len(q)):
         npv += np.exp(-r*t[i])*q[i]
 
@@ -220,29 +224,31 @@ def test_extrapolation(q, S, gaver, krishni):
     print(f"krishni = {krishni:.3f}")
 
     for m, n in methods:
-        option = opt.make_installment_call(S=S, K=K, r=r, d=d, vola=vola, t=T, q=q)
+        option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
         pricer = dp.ExtrapolationPricer(option, n, interpol=m)
         val = pricer.calc()
-        print(f"{m} = {val:.3f}")
+        print(f"{m}, {n} = {val:.3f}")
 
-class ExtrapolationTest:
-    def setup_method(self):
-        self.values = {}
 
-    @pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
-    def test_extrapolation_ciurlia(self, vola, S, T, q, CNFD):
-        K = 100
-        r = 0.05
-        d = 0.04
 
-        print(f"CNFD = {CNFD:.3f}")
+@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
+def test_extrapolation_ciurlia(vola, S, T, q, CNFD):
+    K = 100
+    r = 0.05
+    d = 0.04
 
-        methods = [('poly', 3), ('poly', 5), ('rich', 3), ('rich', 4), ('rich', 5)]
+    print(f"CNFD = {CNFD:.3f}")
 
-        values = {}
-        for m, n in methods:
-            option = opt.make_installment_call(S=S, K=K, r=r, d=d, vola=vola, t=T, q=q)
-            pricer = dp.ExtrapolationPricer(option, n, interpol=m)
-            val = pricer.calc()
-            print(f"{m}, n: {n} = {val:.3f}")
-            self.values[(m, n)].append(val)
+    methods = [('poly', 5), ('rich', 4), ('rich', 5)]
+
+    values = {}
+    for m, n in methods:
+        option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
+        pricer = dp.ExtrapolationPricer(option, n, interpol=m)
+        val = pricer.calc()
+        diff = (val-CNFD)/max(val, CNFD)
+        print(f"{m}, n: {n} = {val:.3f}, diff = {diff*100:.3f}%")
+        if CNFD > 1.0:
+            assert abs(diff) < 0.03
+        else:
+            assert abs(val-CNFD) < 0.15

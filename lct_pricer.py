@@ -22,19 +22,12 @@ def gaver_lct(f, t, num_steps = 10):
     return val
 
 class LCTPricer:
-    def __init__(self, S, K, r, d, vola, T, q, phi = 1):
-        self.S = S
-        self.K = K
-        self.r = r
-        self.d = d
-        self.vola = vola
-        self.T = T
-        self.q = q
-        self.num_steps = 4
-        self.phi = phi
+    def __init__(self, option, num_steps = 4):
+        self.option = option
+        self.num_steps = num_steps
 
     def _theta(self, l):
-        poly = [0.5 * self.vola ** 2, self.r - self.d - 0.5 * self.vola ** 2, -(l + self.r)]
+        poly = [0.5 * self.option.vola ** 2, self.option.r - self.option.d - 0.5 * self.option.vola ** 2, -(l + self.option.r)]
         theta = np.roots(poly)
         if theta[0] < 0:
             theta = np.flip(theta)
@@ -43,44 +36,44 @@ class LCTPricer:
 
     def _lct_stop(self, l):
         theta = self._theta(l)
-        a = 2*(l + self.d)*self.q
-        if self.phi==1:
-            b = l*(1-theta[1])*self.K*self.vola**2
-            return (a/b)**(1/theta[0])*self.K
+        a = 2*(l + self.option.d)*self.option.q
+        if self.option.phi==1:
+            b = l*(1-theta[1])*self.option.K*self.option.vola**2
+            return (a/b)**(1/theta[0])*self.option.K
         else:
-            b = l*(theta[0]-1)*self.K*self.vola**2
-            return (a / b) ** (1 / theta[1]) * self.K
+            b = l*(theta[0]-1)*self.option.K*self.option.vola**2
+            return (a / b) ** (1 / theta[1]) * self.option.K
 
     def _lct_value_van(self, l):
         theta = self._theta(l)
         def xi(i, l):
-            val = self.K * l / (theta[0]-theta[1])/(l+self.d)
-            val *= (1 - (self.r-self.d)/(l+self.r)*theta[1-i])
-            val *= (self.S/self.K)**theta[i]
+            val = self.option.K * l / (theta[0]-theta[1])/(l+self.option.d)
+            val *= (1 - (self.option.r-self.option.d)/(l+self.option.r)*theta[1-i])
+            val *= (self.option.S/self.option.K)**theta[i]
             return val
 
-        if self.phi == 1:
-            if self.S < self.K:
+        if self.option.phi == 1:
+            if self.option.S < self.option.K:
                 return xi(0, l)
             else:
-                return xi(1, l) + self.phi*(l*self.S/(l+self.d) - l*self.K/(l+self.r))
+                return xi(1, l) + self.option.phi*(l*self.option.S/(l+self.option.d) - l*self.option.K/(l+self.option.r))
         else:
-            if self.S < self.K:
-                return xi(0, l) + self.phi*(l*self.S/(l+self.d) - l*self.K/(l+self.r))
+            if self.option.S < self.option.K:
+                return xi(0, l) + self.option.phi*(l*self.option.S/(l+self.option.d) - l*self.option.K/(l+self.option.r))
             else:
                 return xi(1, l)
 
     def _lct_value(self, l):
         stop = self._lct_stop(l)
         theta = self._theta(l)
-        if self.phi*self.S > self.phi*stop:
+        if self.option.phi*self.option.S > self.option.phi*stop:
             val = self._lct_value_van(l)
-            if self.q > 0:
-                val -= self.q / (l + self.r)
-                if self.phi == 1:
-                    val += self.q*theta[0] * (self.S / stop)**theta[1] / (l + self.r) / (theta[0]-theta[1])
+            if self.option.q > 0:
+                val -= self.option.q / (l + self.option.r)
+                if self.option.phi == 1:
+                    val += self.option.q*theta[0] * (self.option.S / stop)**theta[1] / (l + self.option.r) / (theta[0]-theta[1])
                 else:
-                    val -= self.q*theta[1] * (self.S / stop)**theta[0] / (l + self.r) / (theta[0]-theta[1])
+                    val -= self.option.q*theta[1] * (self.option.S / stop)**theta[0] / (l + self.option.r) / (theta[0]-theta[1])
         else:
             val = 0
 
@@ -90,8 +83,8 @@ class LCTPricer:
         return gaver_lct(self._lct_stop, t, self.num_steps)
 
     def value(self):
-        return gaver_lct(self._lct_value, self.T, self.num_steps)
+        return gaver_lct(self._lct_value, self.option.T, self.num_steps)
 
     def vanilla_value(self):
-        return gaver_lct(self._lct_value_van, self.T, self.num_steps)
+        return gaver_lct(self._lct_value_van, self.option.T, self.num_steps)
 

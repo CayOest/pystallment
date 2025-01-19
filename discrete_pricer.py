@@ -130,7 +130,7 @@ class BermudaPricer(DiscretePricer):
         return self._find_stop(f, S_)
 
 def option_value(option):
-    return bs.option_value(option.S, option.K, option.r, option.d, option.vola, option.t, option.phi)
+    return bs.option_value(option.S, option.K, option.r, option.d, option.vola, option.T, option.phi)
 
 class ExtrapolationPricer:
     def __init__(self, option, n, style = 'inst', interpol = 'poly'):
@@ -155,13 +155,10 @@ class ExtrapolationPricer:
         x = []
         values = []
         x.append(1)
-        bs_option = opt.Option(self.option.S, self.option.K[-1], self.option.r, self.option.d, self.option.vola, self.option.t, self.option.phi )
+        bs_option = opt.Option(self.option.S, self.option.K, self.option.r, self.option.d, self.option.vola, self.option.T, self.option.phi )
         values.append(option_value(bs_option))
         for k in range(2, self.n+1):
-            dt = self.option.t/k
-            t = np.linspace(dt, self.option.t, k)
-            q_ = (self.option.K[0]/self.option.r*(1-np.exp(-self.option.r*dt))*np.ones(len(t)-1)).tolist()
-            dopt = opt.make_installment_call(self.option.S, self.option.K[-1], self.option.r, self.option.d, self.option.vola, t, q_)
+            dopt = opt.continuous_to_discrete(self.option, k)
             p = InstallmentCallPricer(dopt)
             x.insert(0, 1/k)
             values.insert(0, p.price())

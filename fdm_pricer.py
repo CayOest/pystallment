@@ -35,23 +35,23 @@ class FDMPricer:
     def __init__(self, option):
         self.option = option
         self.space_steps = 1000
-        self.time_steps = int(1600*self.option.t)
+        self.time_steps = int(1600*self.option.T)
 
     def _calc(self):
         # Parameter
         self.is_american = False
         self.stop = np.zeros(self.time_steps + 1)
         self.ex_bound = np.zeros(self.time_steps + 1)
-        S_max = max(3 * self.option.S, 3 * self.option.K[-1])  # Maximale Preisgrenze dynamisch anpassen
+        S_max = max(3 * self.option.S, 3 * self.option.K)  # Maximale Preisgrenze dynamisch anpassen
         # Diskretisierung
         delta_S = S_max / self.space_steps  # Schrittweite im Aktienkurs
-        delta_t = self.option.t / self.time_steps  # Zeitschrittweite
+        delta_t = self.option.T / self.time_steps  # Zeitschrittweite
         S = np.linspace(0, S_max, self.space_steps + 1)  # Preisgitter
-        self.stop[self.time_steps] = self.option.K[-1]
-        self.ex_bound[self.time_steps] = self.option.K[-1]
+        self.stop[self.time_steps] = self.option.K
+        self.ex_bound[self.time_steps] = self.option.K
 
         # Payoff der amerikanischen Put-Option bei Fälligkeit
-        payoff = np.maximum(self.option.phi*(S-self.option.K[-1]), 0)
+        payoff = np.maximum(self.option.phi*(S-self.option.K), 0)
 
         # Matrix A-Koeffizienten gemäß der vollständigen Diskretisierung
         a = np.zeros(self.space_steps -1 )
@@ -66,7 +66,7 @@ class FDMPricer:
         # Rückwärtsinduktion
         V = payoff.copy()
         for n in range(self.time_steps - 1, -1, -1):  # Zeitrückwärts iterieren
-            V_ = V[1:self.space_steps] - self.option.K[0] * delta_t
+            V_ = V[1:self.space_steps] - self.option.q * delta_t
             V_inner = thomas_algorithm(a[1:], b, c[:self.space_steps-1], V_)  # Lösen mit Thomas-Algorithmus
             # Randbedingungen setzen
             if self.option.phi == +1:

@@ -15,8 +15,8 @@ class BinomialPricer:
     def _init_bounds(self):
         self.stop_bound = np.zeros(self.num_steps + 1)
         self.ex_bound = np.zeros(self.num_steps + 1)
-        self.stop_bound[-1] = self.option.K[-1]
-        self.ex_bound[-1] = self.option.K[-1]
+        self.stop_bound[-1] = self.option.K
+        self.ex_bound[-1] = self.option.K
 
     def _get_up_down_p(self, dt):
         up = np.exp(self.option.vola * np.sqrt(dt))
@@ -77,7 +77,7 @@ class BinomialPricer:
     def _get_installment_rate(self):
         q = 0
         if hasattr(self.option, "q"):
-            if isinstance(self.option.q, float):
+            if isinstance(self.option.q, numbers.Number):
                 q = self.option.q
         elif hasattr(self.option, "K"):
             if isinstance(self.option.K, list):
