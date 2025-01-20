@@ -109,7 +109,7 @@ class Option:
         Computes the payoff of the option given a specific price.
 
         :param x: Price(s) at which the option payoff is evaluated.
-        :return: Payoff value(s).
+        :return: Payoff price(s).
         """
         if hasattr(self.K, "__get_item__"):
             X = self.K[-1]

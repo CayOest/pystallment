@@ -1,7 +1,7 @@
 import numpy as np
+import numpy.random
 
 from pystallment.option import AmericanOption
-
 
 class LSMCPricer:
     def __init__(self, option, num_paths = 10000, fit = 'hermite'):
@@ -11,8 +11,11 @@ class LSMCPricer:
         self.plot = False
         self.is_american = isinstance(self.option, AmericanOption)
         self.fit = fit
+        self.seed = None
 
     def _generate_paths(self):
+        rng = numpy.random.default_rng(self.seed)
+
         self.paths = np.zeros((self.num_paths, self.time_steps + 1))
         self.dt = self.option.T / self.time_steps
 
@@ -20,13 +23,13 @@ class LSMCPricer:
             self.paths[i, 0] = self.option.S
             self.paths[self.num_paths-i-1, 0] = self.option.S
             for t in range(1, self.time_steps+1):
-                e = np.random.normal()
+                e = rng.normal()
                 self.paths[i, t] =  self.paths[i][t-1]*np.exp((self.option.r-self.option.d - 0.5*self.option.vola**2)*self.dt + self.option.vola*e*np.sqrt(self.dt))
                 e = -e
                 self.paths[self.num_paths-i-1, t] = self.paths[self.num_paths-i-1][t - 1] * np.exp((self.option.r - self.option.d - 0.5 * self.option.vola ** 2) * self.dt + self.option.vola * e * np.sqrt(
                     self.dt))
 
-    def calc(self):
+    def price(self):
         self._generate_paths()
         payoffs = self.option.payoff(self.paths)
 

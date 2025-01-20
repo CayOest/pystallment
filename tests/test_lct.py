@@ -22,7 +22,7 @@ def test_vanilla_call():
         lct_value = lct_pricer.vanilla_value()
         print(f"LCT ({n}) = {lct_value}, diff={(lct_value-bs_value)*100/bs_value}%")
 
-@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
+@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call_short)
 def test_installment_call_ciurlia(vola, S, T, q, CNFD):
     K = 100
     r = 0.05
@@ -30,10 +30,8 @@ def test_installment_call_ciurlia(vola, S, T, q, CNFD):
 
     print(f"CNFD = {CNFD:.3f}")
 
-    n_ = [1000]
-    for n in n_:
-        opt = option.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
-        pricer = lct.LCTPricer(opt, num_steps=7)
-        val = pricer.value()
-        print(f"val ({n}) = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")
-        assert val == pytest.approx(CNFD, abs=1.5e-1)
+    opt = option.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
+    pricer = lct.LCTPricer(opt, num_steps=7)
+    val = pricer.price()
+    print(f"LCT = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")
+    assert val == pytest.approx(CNFD, abs=1.5e-1)

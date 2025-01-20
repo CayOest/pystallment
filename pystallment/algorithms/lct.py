@@ -1,6 +1,11 @@
 import numpy as np
 import math
 
+"""
+This module calculates the continuous installment call with the method introduced by Kimura, "Valuing continuous installment
+options". 
+"""
+
 def gaver_lct(f, t, num_steps = 10):
     alpha = np.log(2) / t
     n = num_steps
@@ -82,7 +87,7 @@ class LCTPricer:
     def stop_bound(self, t):
         return gaver_lct(self._lct_stop, t, self.num_steps)
 
-    def value(self):
+    def price(self):
         return gaver_lct(self._lct_value, self.option.T, self.num_steps)
 
     def vanilla_value(self):

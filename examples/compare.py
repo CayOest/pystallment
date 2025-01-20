@@ -91,8 +91,8 @@ if __name__ == "__main__":
     if test_richardson:
         pricer = RichardsonPricer(S, K, r, d=0.0, vola=vola, T=T, phi=+1, q=r*K)
         pricer.n =3
-        value = pricer.calc()
-        print("value = ", value)
+        value = pricer.price()
+        print("price = ", value)
 
     if plot_boundaries:
         plt.ion()  # Interaktive Plot-Anzeige einschalten

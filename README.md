@@ -43,10 +43,10 @@ q = 3     # installment rate
 phi = +1  # +1 for call, -1 for put
 opt = ContinuousInstallmentOption(S, K, r, d, vola, T, q, +1)
 ```
-Then create a pricer object and call `value()`:
+Then create a pricer object and call `price()`:
 ```
 p = FDPricer(opt)
-price = p.value()
+price = p.price()
 print(f"price = {price:.5}")
 ```
 ## Tests
