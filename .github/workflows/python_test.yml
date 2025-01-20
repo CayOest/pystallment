@@ -1,4 +1,4 @@
-name: Python Tests
+name: Python Tests (Parallel)
 
 on:
   push:
@@ -11,20 +11,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        test_file: ${{ fromJson(env.TEST_FILES) }}
-    env:
-      TEST_FILES: "" # Platzhalter für die Dateien
+        test_file:
+          - tests/test_binomial.py
+          - tests/test_discrete.py
+          - tests/test_fdm.py
+          - tests/test_lct.py
+          - tests/test_lscm.py
+
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
-
-    - name: Discover test files
-      id: discover
-      run: |
-        files=$(find tests -name 'test_*.py' | jq -R . | jq -s .)
-        echo "TEST_FILES=$files" >> $GITHUB_ENV
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -40,5 +39,5 @@ jobs:
     - name: Add project root to PYTHONPATH
       run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
-    - name: Run pytest
+    - name: Run specific test file
       run: pytest ${{ matrix.test_file }}
