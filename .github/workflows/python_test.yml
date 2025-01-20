@@ -9,9 +9,26 @@ on:
       - main
 
 jobs:
-  test:
+  discover_tests:
     runs-on: ubuntu-latest
+    outputs:
+      test_files: ${{ steps.discover.outputs.files }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
 
+    - name: Discover test files
+      id: discover
+      run: echo "$(find tests -name 'test_*.py' | paste -sd ',' -)"
+      env:
+        files: ${{ steps.discover.outputs.files }}
+
+  test:
+    needs: discover_tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test_file: ${{ fromJson(needs.discover_tests.outputs.test_files) }}
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
@@ -30,15 +47,5 @@ jobs:
     - name: Add project root to PYTHONPATH
       run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
-    - name: Discover test files
-      id: discover
-      run: echo "$(find tests -name 'test_*.py' | paste -sd ',' -)" > test_files.txt
-
-  test_split:
-    needs: test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        file: ${{ fromJson(steps.discover.outputs.files) }}
-    steps:
-    - name: pytest
+    - name: Run pytest
+      run: pytest ${{ matrix.test_file }}
