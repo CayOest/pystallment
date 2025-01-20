@@ -59,9 +59,13 @@ class FDMPricer:
             b[j - 1] = 1 + self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 * delta_t + self.option.r * delta_t
             c[j - 1] = (-0.5 * self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 - (self.option.r-self.option.d) * S_j / (2 * delta_S)) * delta_t if j < self.space_steps - 1 else 0
 
+        q = 0
+        if hasattr(self.option, "q"):
+            q = self.option.q
+
         V = payoff.copy()
         for n in range(self.time_steps - 1, -1, -1):
-            V_ = V[1:self.space_steps] - self.option.q * delta_t
+            V_ = V[1:self.space_steps] - q * delta_t
             V_inner = thomas_algorithm(a[1:], b, c[:self.space_steps-1], V_)
 
             # boundary conditions
@@ -73,10 +77,11 @@ class FDMPricer:
                 V[-1] = 0
 
             if self.is_american:
+                # todo: only works for phi = +1, i. e. call
                 for j in range(0, self.space_steps-1):
                     if V_inner[j] < self.option.phi*(S[j] - self.option.K):
-                        self.ex_bound[n] = S[j]
                         V_inner[j] = self.option.phi*( S[j] - self.option.K)
+                        self.ex_bound[n] = S[j]
 
             V[1:self.space_steps] = V_inner
             for j in range(self.space_steps+1):

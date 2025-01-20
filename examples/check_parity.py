@@ -1,23 +1,26 @@
 import numpy as np
-from pystallment.algorithms.fdm import FDMPricer
-from pystallment.algorithms.discrete import InstallmentCallPricer, BermudaPutPricer, RichardsonPricer
-
 import matplotlib.pyplot as plt
+
+from pystallment.algorithms.binomial import BinomialPricer
+from pystallment.algorithms.fdm import FDMPricer
+from pystallment.algorithms.discrete import InstallmentCallPricer, BermudaPricer
+import pystallment.option as opt
+
 
 def check_formula(S, K, r, vola, T, space_steps, time_steps, plot_boundaries=True):
     print(f"Continuous Check, M = {space_steps}, N = {time_steps}")
     # price installment call with rate r*K
-    call_pricer = FDMPricer(S, K, r, 0, vola, T, q=r*K, phi=+1)
+    option = opt.ContinuousInstallmentOption(S, K, r, 0, vola, T, r*K, phi=+1)
+    call_pricer = FDMPricer(option)
     call_pricer.space_steps = space_steps
     call_pricer.time_steps = time_steps
-    call_price = call_pricer.calc()
+    call_price = call_pricer.price()
     print(f"Call Price = {call_price:.3f}")
 
     # price American put
-    put_pricer = FDMPricer(S, K, r, 0, vola, T, 0, phi=-1)
-    put_pricer.is_american = True
-    put_pricer.space_steps = space_steps
-    put_pricer.time_steps = time_steps
+    option = opt.AmericanOption(S, K, r, 0, vola, T, phi=-1)
+    put_pricer = BinomialPricer(option)
+    put_pricer.num_steps = time_steps
     put_price = put_pricer.price()
     print(f"Put Price = {put_price:.3f}")
     
@@ -40,7 +43,8 @@ def check_discrete(S, K, r, vola, T, plot_boundaries=True, n=8):
     q_ = np.ones(len(t)) * q
     q_[-1] = K
 
-    call_pricer = InstallmentCallPricer(S, r, 0, vola, t, q_)
+    option = opt.DiscreteInstallmentOption(S, r, 0, vola, t, q_, +1 )
+    call_pricer = InstallmentCallPricer(option)
     call = call_pricer.price()
     print("Installment Price = ", call)
 
@@ -51,7 +55,8 @@ def check_discrete(S, K, r, vola, T, plot_boundaries=True, n=8):
         for j in range(i, n):
             K_[i] += q_[j] * np.exp(-r * (t[j] - t[i]))
 
-    put_pricer = BermudaPutPricer(S, r, 0, vola, t, K_)
+    option = opt.BermudaOption(S, r, 0, vola, t, K_, -1)
+    put_pricer = BermudaPricer(option)
     put = put_pricer.price()
     print("Put Price = ", put)
 
@@ -83,16 +88,9 @@ if __name__ == "__main__":
     n = [3, 5, 8]
 
     # what to test
-    plot_boundaries = False
-    test_discrete = False
-    test_continuous = False
-    test_richardson = True
-
-    if test_richardson:
-        pricer = RichardsonPricer(S, K, r, d=0.0, vola=vola, T=T, phi=+1, q=r*K)
-        pricer.n =3
-        value = pricer.price()
-        print("price = ", value)
+    plot_boundaries = True
+    test_discrete = True
+    test_continuous = True
 
     if plot_boundaries:
         plt.ion()  # Interaktive Plot-Anzeige einschalten

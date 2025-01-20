@@ -48,6 +48,18 @@ class BinomialPricer:
         return prices
     
     def _check_stop_event(self, step, Vi, Si):
+        if self.is_american:
+            exercise = self.option.payoff(Si)
+            if exercise > 0 and Vi <= exercise:  # exercise event
+                Vi = exercise
+                if self.ex_bound[step] < 1e-12:
+                    self.ex_bound[step] = Si
+
+                if self.option.phi == -1:
+                    self.ex_bound[step] = max(self.ex_bound[step], Si)
+                else: #todo: check this
+                    self.ex_bound[step] = min(self.ex_bound[step], Si)
+
         if Vi <= 0:  # stop event
             Vi = 0
             if self.option.phi == -1:
@@ -55,13 +67,6 @@ class BinomialPricer:
             else:
                 if self.stop_bound[step] == 0:
                     self.stop_bound[step] = Si
-
-        if self.is_american:
-            exercise = self.option.payoff(Si)
-            if Vi <= exercise:  # exercise event
-                Vi = exercise
-                if self.ex_bound[step] == 0:
-                    self.ex_bound[step] = Si
         return Vi
 
     def _get_ttm(self):
@@ -93,6 +98,7 @@ class BinomialPricer:
         T = self._get_ttm()
         dt = T/self.num_steps
         up, do, p = self._get_up_down_p(dt)
+        print(f"up = {up}, do = {do}")
 
         # build price tree
         prices = self._generate_prices(self.num_steps+1, up, do)
