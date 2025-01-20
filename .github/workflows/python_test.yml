@@ -12,10 +12,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        test_file: [] # Platzhalter, wird dynamisch befüllt
-
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
@@ -36,42 +32,13 @@ jobs:
 
     - name: Discover test files
       id: discover
-      run: echo "::set-output name=files::$(find tests -name 'test_*.py' | paste -sd ',' -)"
+      run: echo "$(find tests -name 'test_*.py' | paste -sd ',' -)" > test_files.txt
 
-    - name: Set up dynamic matrix
-      uses: actions/github-script@v6
-      id: matrix
-      with:
-        script: |
-          const files = "${{ steps.discover.outputs.files }}".split(",");
-          return { test_file: files };
-      outputs:
-        matrix: ${{ steps.matrix.outputs.matrix }}
-
-  test_job:
+  test_split:
     needs: test
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test_file: ${{ needs.test.outputs.matrix }}
-
+        file: ${{ fromJson(steps.discover.outputs.files) }}
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v3
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest
-        pip install -r requirements.txt
-
-    - name: Add project root to PYTHONPATH
-      run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
-
-    - name: Run pytest
-      run: pytest ${{ matrix.test_file }}
+    - name: pytest
