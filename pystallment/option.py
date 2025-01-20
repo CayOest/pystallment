@@ -76,3 +76,8 @@ class BermudaOption(Option):
 class AmericanOption(Option):
     def __init__(self, S, K, r, d, vola, T, phi):
         super().__init__(S, K, r, d, vola, T, phi)
+
+class AmericanContinuousInstallmentOption(AmericanOption):
+    def __init__(self, S, K, r, d, vola, T, q, phi):
+        super().__init__(S, K, r, d, vola, T, phi)
+        self.q = q

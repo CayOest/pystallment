@@ -29,39 +29,37 @@ class LSMCPricer:
     def calc(self):
         self._generate_paths()
         payoffs = self.option.payoff(self.paths)
-        df = np.exp(-self.option.r*self.dt)
 
-        qi = 0
+        q = 0
         if hasattr(self.option, "q"):
-            qi = self.option.q / self.option.r * (1 - df)
+            q = self.option.q
 
-        # Rückwärtsinduktion mit Regression
-        V = payoffs[:, -1]  # Endzeitwerte (Payoff bei Endfälligkeit)
+        V = payoffs[:, -1]
         stop_times = np.ones(self.num_paths) * self.time_steps
         for t in range(self.time_steps, 0, -1):
+            itm = payoffs[:, t] > 0
+            _df = np.exp(-self.option.r * self.dt * (stop_times - t))
+            y = _df * V - q / self.option.r * (1 - _df)
+
             if self.is_american:
-                # Identifiziere In-the-Money-Pfade
-                in_the_money = payoffs[:, t] > 0
-                S_itm = self.paths[in_the_money, t]
-                V_itm = V[in_the_money] * df
-                # Regression: Schätze den Fortführungswert
+                S_itm = self.paths[itm, t]
+                y_itm = y[itm]
                 if len(S_itm) > 0:
                     if self.fit == 'hermite':
-                        fitted = np.polynomial.Hermite.fit(S_itm, V_itm, 3)
+                        fitted = np.polynomial.Hermite.fit(S_itm, y_itm, 4)
                         continuation_value = fitted(S_itm)
 
                     if self.fit == 'poly':
-                        regression = np.polyfit(S_itm, V_itm, 2)
+                        regression = np.polyfit(S_itm, y_itm, 2)
                         continuation_value = np.polyval(regression, S_itm)
 
                     # Entscheidung: Ausüben oder Fortführen
-                    exercise = payoffs[in_the_money, t] > continuation_value
-                    V[in_the_money] = np.where(exercise, payoffs[in_the_money, t], V_itm)
-                V[~in_the_money] *= df
-            if hasattr(self.option, "q"):
-                _df = np.exp(-self.option.r*self.dt*(stop_times-t))
-                y = _df*V - self.option.q/self.option.r*(1-_df)
-                oom = payoffs[:,t] == 0
+                    exercise = payoffs[itm, t] > continuation_value
+                    stop_times[itm] = np.where(exercise, t, stop_times[itm])
+                    V[itm] = np.where(exercise, payoffs[itm, t], V[itm])
+
+            if q != 0:
+                oom = ~itm
                 S_oom = self.paths[oom, t]
                 y_oom = y[oom]
                 if len(S_oom) > 0:
@@ -79,9 +77,7 @@ class LSMCPricer:
                     V[oom] = np.where(stop, 0, V[oom])
 
         # Diskontierter Erwartungswert am Anfang
-        option_price = np.mean(V) * df
-        if hasattr(self.option, "q"):
-            _df = np.exp(-self.option.r*self.dt*stop_times)
-            y = _df*V - self.option.q/self.option.r*(1-_df)
-            option_price = np.mean(y)
+        _df = np.exp(-self.option.r*self.dt*stop_times)
+        y = _df*V - q/self.option.r*(1-_df)
+        option_price = np.mean(y)
         return option_price
