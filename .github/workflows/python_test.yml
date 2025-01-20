@@ -12,6 +12,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        test_file: [] # Platzhalter, wird dynamisch befüllt
+
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
@@ -19,28 +23,55 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10' # Wähle die gewünschte Python-Version
+        python-version: '3.10'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pytest
-        pip install -r requirements.txt # Falls du eine requirements.txt verwendest
+        pip install -r requirements.txt
+
+    - name: Add project root to PYTHONPATH
+      run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
     - name: Discover test files
       id: discover
       run: echo "::set-output name=files::$(find tests -name 'test_*.py' | paste -sd ',' -)"
 
-    - name: Run dynamic matrix
+    - name: Set up dynamic matrix
       uses: actions/github-script@v6
+      id: matrix
       with:
         script: |
           const files = "${{ steps.discover.outputs.files }}".split(",");
-          return { matrix: { test_file: files } };
+          return { test_file: files };
+      outputs:
+        matrix: ${{ steps.matrix.outputs.matrix }}
+
+  test_job:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test_file: ${{ needs.test.outputs.matrix }}
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements.txt
 
     - name: Add project root to PYTHONPATH
       run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
     - name: Run pytest
-      run: |
-        pytest tests
+      run: pytest ${{ matrix.test_file }}
