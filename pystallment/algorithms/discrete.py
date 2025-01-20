@@ -93,7 +93,7 @@ class InstallmentCallPricer(DiscretePricer):
     def _calc(self, S, t_, K_, S_, t_k):
         R_ = _gen_cov(t_)
         dplus = [bs.d1(S, S_[i], self.option.r, self.option.d, self.option.vola, t_[i] - t_k) for i in range(len(t_))]
-        dminus = [bs.d2(S, S_[i], self.option.r, self.option.d, self.option.vola, t_[i] - t_k) for i in range(len(t_))]
+        dminus = [bs.d2_from_d1(dplus[i], self.option.vola, t_[i] - t_k) for i in range(len(t_)) ]
         val = S * np.exp(-self.option.d * (t_[-1] - t_k)) * _mvn_cdf(R_, dplus)
         for i in range(len(t_)):
             val -= np.exp(-self.option.r * (t_[i] - t_k)) * K_[i] * _mvn_cdf(R_[:i+1, :i+1], dminus[:i+1])
@@ -112,7 +112,7 @@ class BermudaPricer(DiscretePricer):
     def _calc(self, S, t_, K_, S_, t_k):
         R_ = _gen_cov(t_)
         dplus = [bs.d1(S, S_[i], self.option.r, self.option.d, self.option.vola, t_[i] - t_k) for i in range(len(t_))]
-        dminus = [bs.d2(S, S_[i], self.option.r, self.option.d, self.option.vola, t_[i] - t_k) for i in range(len(t_))]
+        dminus = [bs.d2_from_d1(dplus[i], self.option.vola, t_[i] - t_k) for i in range(len(t_))]
         val = S * np.exp(-self.option.d * (t_[-1] - t_k)) * (_mvn_cdf(R_, dplus) - 1)
         for i in range(len(t_)):
             dminus_ = dminus[:i+1].copy()
