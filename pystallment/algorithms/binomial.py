@@ -1,12 +1,16 @@
 import numbers
-
 import numpy as np
 
 from pystallment.option import AmericanOption
 
 class BinomialPricer:
     def __init__(self, option, num_steps = 1000, factor_adjustment='r-d'):
-        # factor_adjustment can be 'r-d' or '-d' or no correction
+        """
+        Construct a BinomialPricer for American option and installment options
+        :param option: option of type AmericanOption or ContinuousInstallmentOption
+        :param num_steps: depth of the binomial tree
+        :param factor_adjustment: the up and down steps in the tree are adjusted ('r-d' or '-d')
+        """
         self.option = option
         self.num_steps = num_steps
         self.is_american = isinstance(option, AmericanOption)
@@ -108,6 +112,6 @@ class BinomialPricer:
 
         return V[0]
 
-    def calc(self):
+    def price(self):
         self._init_bounds()
         return self._calc()

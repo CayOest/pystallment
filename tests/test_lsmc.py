@@ -14,7 +14,7 @@ def test_american_put():
 
     option = opt.AmericanOption(S, K, r, d, vola, T, -1)
     bp = BinomialPricer(option)
-    bprice = bp.calc()
+    bprice = bp.price()
     print(f"Binomial Price = {bprice:.3f}")
     mcp = lsmc.LSMCPricer(option)
     mcp.num_paths = int(1e5)
@@ -35,7 +35,7 @@ def test_installment_call():
 
     # Binomial Price
     bp = BinomialPricer(option)
-    bprice = bp.calc()
+    bprice = bp.price()
     print(f"Binomial Price = {bprice:.3f}")
 
     mcp = lsmc.LSMCPricer(option)

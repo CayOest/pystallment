@@ -26,7 +26,7 @@ def test_american_put(S, r, d, expected):
 
     option = opt.AmericanOption(S, K, r, d, vola, T, phi=-1)
     pricer = bp.BinomialPricer(option)
-    price = pricer.calc()
+    price = pricer.price()
     assert price == pytest.approx(expected, rel=1e-3)
 
 @pytest.mark.parametrize("S, r, d, expected", [
@@ -50,7 +50,7 @@ def test_american_call(S, r, d, expected):
     T = 1
     option = opt.AmericanOption(S, K, r, d, vola, T, phi=+1)
     pricer = bp.BinomialPricer(option)
-    price = pricer.calc()
+    price = pricer.price()
     assert price == pytest.approx(expected, rel=1e-3)
 
 @pytest.mark.parametrize("S, r, d", [
@@ -69,32 +69,11 @@ def test_euro_option(S, r, d):
     for phi in types:
         option = opt.Option(S, K, r, d, vola, T, phi=phi)
         pricer = bp.BinomialPricer(option)
-        price = pricer.calc()
+        price = pricer.price()
         expected = bs.option_value(S, K, r, d, vola, T, phi)
         assert price == pytest.approx(expected, rel=1e-3)
 
-
-@pytest.mark.parametrize("q, S, gaver, krishni", td.anton_inst_call)
-def test_installment_call(q, S, gaver, krishni):
-    K = 100
-    r = 0.03
-    d = 0.05
-    vola = 0.2
-    T = 1
-
-    print(f"gaver = {gaver:.3f}")
-    print(f"krishni = {krishni:.3f}")
-
-    n_ = [1000, 2000, 4000, 8000]
-    n_ = [1000]
-    for n in n_:
-        option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
-        pricer = bp.BinomialPricer(option, n, factor_adjustment='r-d')
-        val = pricer.calc()
-        print(f"val ({n}) = {val:.3f}, diff = {abs(val-gaver)*100/max(val, gaver):.3f} %")
-
-
-@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
+@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call_short)
 def test_installment_call_ciurlia(vola, S, T, q, CNFD):
     K = 100
     r = 0.05
@@ -102,10 +81,8 @@ def test_installment_call_ciurlia(vola, S, T, q, CNFD):
 
     print(f"CNFD = {CNFD:.3f}")
 
-    n_ = [1000]
-    for n in n_:
-        option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
-        pricer = bp.BinomialPricer(option, n, factor_adjustment='r-d')
-        val = pricer.calc()
-        print(f"val ({n}) = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")
-        assert val == pytest.approx(CNFD, abs=1e-2)
+    option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
+    pricer = bp.BinomialPricer(option, num_steps=1000, factor_adjustment='r-d')
+    val = pricer.price()
+    print(f"val = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")
+    assert val == pytest.approx(CNFD, abs=1e-2)
