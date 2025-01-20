@@ -18,7 +18,7 @@ def check_formula(S, K, r, vola, T, space_steps, time_steps, plot_boundaries=Tru
     put_pricer.is_american = True
     put_pricer.space_steps = space_steps
     put_pricer.time_steps = time_steps
-    put_price = put_pricer.calc()
+    put_price = put_pricer.price()
     print(f"Put Price = {put_price:.3f}")
     
     check = put_price + S - call_price - K

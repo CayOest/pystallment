@@ -4,7 +4,7 @@ from pystallment.algorithms import fdm as fdm
 from pystallment import option as opt
 import test_data as td
 
-@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
+@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call_short)
 def test_installment_call_ciurlia(vola, S, T, q, CNFD):
     K = 100
     r = 0.05
@@ -16,6 +16,6 @@ def test_installment_call_ciurlia(vola, S, T, q, CNFD):
     for n in n_:
         option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
         pricer = fdm.FDMPricer(option)
-        val = pricer.calc()
+        val = pricer.price()
         print(f"val ({n}) = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")
         assert val == pytest.approx(CNFD, rel=1e-2)

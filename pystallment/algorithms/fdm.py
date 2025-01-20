@@ -1,14 +1,12 @@
 import numpy as np
 
-# Thomas-Algorithmus für tridiagonale Matrizen
 def thomas_algorithm(a, b, c, d):
     """
-    Thomas-Algorithmus zur Lösung von Ax = d,
-    wobei A eine tridiagonale Matrix ist.
-    a: Unterdiagonale (n-1 Elemente)
-    b: Hauptdiagonale (n Elemente)
-    c: Oberdiagonale (n-1 Elemente)
-    d: Rechte Seite (n Elemente)
+    Thomas-Algorithm for solving Ax = d,
+    a: lower diagonal (n-1 elements)
+    b: main diagonal (n elements)
+    c: upper diagonal (n-1 elements)
+    d: right hand side (n Elements)
     """
     n = len(d)
     c_ = np.zeros(n - 1)
@@ -42,18 +40,16 @@ class FDMPricer:
         self.is_american = False
         self.stop = np.zeros(self.time_steps + 1)
         self.ex_bound = np.zeros(self.time_steps + 1)
-        S_max = max(3 * self.option.S, 3 * self.option.K)  # Maximale Preisgrenze dynamisch anpassen
-        # Diskretisierung
-        delta_S = S_max / self.space_steps  # Schrittweite im Aktienkurs
-        delta_t = self.option.T / self.time_steps  # Zeitschrittweite
-        S = np.linspace(0, S_max, self.space_steps + 1)  # Preisgitter
+        S_max = max(3 * self.option.S, 3 * self.option.K)
+
+        delta_S = S_max / self.space_steps  # step size in space
+        delta_t = self.option.T / self.time_steps  # step size in time
+        S = np.linspace(0, S_max, self.space_steps + 1)  # space grid
         self.stop[self.time_steps] = self.option.K
         self.ex_bound[self.time_steps] = self.option.K
 
-        # Payoff der amerikanischen Put-Option bei Fälligkeit
         payoff = np.maximum(self.option.phi*(S-self.option.K), 0)
 
-        # Matrix A-Koeffizienten gemäß der vollständigen Diskretisierung
         a = np.zeros(self.space_steps -1 )
         b = np.zeros(self.space_steps - 1)
         c = np.zeros(self.space_steps - 1)
@@ -63,20 +59,19 @@ class FDMPricer:
             b[j - 1] = 1 + self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 * delta_t + self.option.r * delta_t
             c[j - 1] = (-0.5 * self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 - (self.option.r-self.option.d) * S_j / (2 * delta_S)) * delta_t if j < self.space_steps - 1 else 0
 
-        # Rückwärtsinduktion
         V = payoff.copy()
-        for n in range(self.time_steps - 1, -1, -1):  # Zeitrückwärts iterieren
+        for n in range(self.time_steps - 1, -1, -1):
             V_ = V[1:self.space_steps] - self.option.q * delta_t
-            V_inner = thomas_algorithm(a[1:], b, c[:self.space_steps-1], V_)  # Lösen mit Thomas-Algorithmus
-            # Randbedingungen setzen
+            V_inner = thomas_algorithm(a[1:], b, c[:self.space_steps-1], V_)
+
+            # boundary conditions
             if self.option.phi == +1:
-                V[0] = 0  # Linke Randbedingung
-                V[-1] = S_max  # Rechte Randbedingung
+                V[0] = 0
+                V[-1] = S_max
             else:
                 V[0] = self.option.K
                 V[-1] = 0
 
-            # Frühzeitige Ausübungsbedingung berücksichtigen
             if self.is_american:
                 for j in range(0, self.space_steps-1):
                     if V_inner[j] < self.option.phi*(S[j] - self.option.K):
@@ -93,9 +88,8 @@ class FDMPricer:
                             self.stop[n] = S[j]
                     V[j] = 0
 
-        # Interpolation anpassen, um den exakten Spotpreis zu treffen
         option_price = np.interp(self.option.S, S, V)
         return option_price
 
-    def calc(self):
+    def price(self):
         return self._calc()
