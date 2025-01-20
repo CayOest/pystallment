@@ -15,12 +15,12 @@ Supported methods:
 * Least Squares Monte Carlo
 * Inversion of Laplace-Carson transform
 
-|          |  Discrete  |  Extrapolation  |  Binomial  |  FD  |  LSMC  |   LCT   |
-|:---------|:----------:|:---------------:|:----------:|:----:|:------:|:-------:|
- Bermuda  |     x      |        x        |     x      |      |        |         |
- n-Inst   |     x      |                 |            |      |        |         |
- EU Inst  |            |        x        |     x      |  x   |   x    |    x    |
- Am Inst  |            |                 |     x      |      |   x    |         |       
+|          |  Discrete  | Binomial |  FD  |  LSMC  | LCT | Extrapolation |
+|:---------|:----------:|:--------:|:----:|:------:|:---:|:-------------:|
+| Bermuda  |     x      |    x     |      |        |     |               |
+| n-Inst   |     x      |          |      |        |     |               |
+| EU Inst  |            |   x      |  x   |   x    |  x  |       x       |
+|  Am Inst |            |      x   |      |   x    |     |               |
 
 
 ## Installation
