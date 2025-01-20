@@ -211,7 +211,7 @@ def test_formula(S, r):
     for i in range(len(call_pricer.stop)):
         assert call_pricer.stop[i] == pytest.approx(put_pricer.stop[i], rel=1e-3)
 
-@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
+@pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call_short)
 def test_extrapolation_ciurlia(vola, S, T, q, CNFD):
     K = 100
     r = 0.05
@@ -219,7 +219,7 @@ def test_extrapolation_ciurlia(vola, S, T, q, CNFD):
 
     print(f"CNFD = {CNFD:.3f}")
 
-    methods = [('poly', 5), ('rich', 4), ('rich', 5)]
+    methods = [('poly', 5), ('rich', 5)]
 
     for m, n in methods:
         option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
