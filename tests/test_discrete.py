@@ -211,26 +211,6 @@ def test_formula(S, r):
     for i in range(len(call_pricer.stop)):
         assert call_pricer.stop[i] == pytest.approx(put_pricer.stop[i], rel=1e-3)
 
-@pytest.mark.parametrize("q, S, gaver, krishni", td.anton_inst_call)
-def test_extrapolation(q, S, gaver, krishni):
-    K  = 100
-    r = 0.03
-    d = 0.05
-    vola = 0.2
-    T = 1
-    methods = [('poly', 5), ('poly', 8), ('rich', 3), ('rich', 4), ('rich', 5)]
-
-    print(f"gaver = {gaver:.3f}")
-    print(f"krishni = {krishni:.3f}")
-
-    for m, n in methods:
-        option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
-        pricer = dp.ExtrapolationPricer(option, n, interpol=m)
-        val = pricer.calc()
-        print(f"{m}, {n} = {val:.3f}")
-
-
-
 @pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)
 def test_extrapolation_ciurlia(vola, S, T, q, CNFD):
     K = 100
@@ -241,11 +221,10 @@ def test_extrapolation_ciurlia(vola, S, T, q, CNFD):
 
     methods = [('poly', 5), ('rich', 4), ('rich', 5)]
 
-    values = {}
     for m, n in methods:
         option = opt.ContinuousInstallmentOption(S=S, K=K, r=r, d=d, vola=vola, T=T, q=q, phi=+1)
         pricer = dp.ExtrapolationPricer(option, n, interpol=m)
-        val = pricer.calc()
+        val = pricer.price()
         diff = (val-CNFD)/max(val, CNFD)
         print(f"{m}, n: {n} = {val:.3f}, diff = {diff*100:.3f}%")
         if CNFD > 1.0:

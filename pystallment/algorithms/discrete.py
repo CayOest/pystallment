@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 
 from pystallment import black_scholes as bs, option as opt
 
-
 def _mvn_cdf(cov, y):
+    """
+    helper function for mvncdf with mean 0.
+    """
     if len(y) == 1:
         return norm.cdf(y[0], loc=0, scale=1)
 
@@ -17,6 +19,11 @@ def _mvn_cdf(cov, y):
     return mvn.cdf(y)
 
 def _gen_cov(t_):
+    """
+    Generates a covariance matrix R with entries: r_{i, j} = sqrt(t_i/t_j)
+    :param t_: the vector of all exercise dates
+    :return: a positive symmetric definite covariance matrix
+    """
     n = len(t_)
     cov = np.zeros((n, n))
     for i in range(n):
@@ -27,22 +34,12 @@ def _gen_cov(t_):
                 cov[i, j] = np.sqrt(t_[j] / t_[i])
     return cov
 
-def _find_stop(f, S_):
-    xtol = 1e-24
-
-    if (len(S_) == 1):
-        bracket = [0.8 * S_[0], 1.2 * S_[0]]
-    else:
-        bracket = [0.9 * S_[0], 1.1 * S_[0]]
-    res = root_scalar(
-        f,
-        method='brentq',
-        bracket=bracket,
-        xtol=xtol
-    )
-    return res.root
-
 def _twist( R):
+    """
+    helper function for twisting the getting the twisted matrix of matrix R
+    :param R: the matrix to twist
+    :return: the twisted matrix as copy
+    """
     R_ = R.copy()
     for j in range(len(R_)):
         R_[j, -1] *= -1
@@ -50,6 +47,9 @@ def _twist( R):
     return R_
 
 class DiscretePricer(ABC):
+    """
+    This class works as a base class for both pricing Bermuda options as well as n-installment options
+    """
     def __init__(self, option):
         self.option = option
 
@@ -71,6 +71,10 @@ class DiscretePricer(ABC):
         return res.root
 
     def _generate_stops(self):
+        """
+        Calculate all the discrete stopping boundaries recursively
+        :return: a list of the stopping values
+        """
         stops = [self.option.K[-1]]
         for k in range(len(self.option.t) - 2, -1, -1):
             t_k = self.option.t[k]
@@ -131,10 +135,15 @@ def option_value(option):
     return bs.option_value(option.S, option.K, option.r, option.d, option.vola, option.T, option.phi)
 
 class ExtrapolationPricer:
-    def __init__(self, option, n, style = 'inst', interpol = 'poly'):
+    def __init__(self, option, n, interpol = 'poly'):
+        """
+        Generate an ExtrapolationPricer
+        :param option: the ContinuousInstallmentOption option to price
+        :param n: the number of discrete values to extrapolate from
+        :param interpol: the interpolation method: either 'poly' (polynomial) or 'rich' (Richardson)
+        """
         self.option = option
         self.n = n
-        self.style = style
         self.interpol = interpol
         self.plot = False
 
@@ -146,10 +155,7 @@ class ExtrapolationPricer:
             val *= 1.0*i/j
         return val
 
-    def calc(self):
-        if self.style != 'inst':
-            raise TypeError("Style != inst not supported.")
-
+    def price(self):
         x = []
         values = []
         x.append(1)
