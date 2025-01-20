@@ -1,9 +1,6 @@
-import option as opt
 import numpy as np
-import matplotlib.pyplot as plt
-from numpy.polynomial.hermite import hermvander
 
-from option import AmericanOption
+from pystallment.option import AmericanOption
 
 
 class LSMCPricer:

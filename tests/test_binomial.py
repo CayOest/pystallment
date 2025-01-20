@@ -1,8 +1,7 @@
 import pytest
 
-import binomial as bp
-import option as opt
-import black_scholes as bs
+from pystallment.algorithms import binomial as bp
+from pystallment import black_scholes as bs, option as opt
 import test_data as td
 
 @pytest.mark.parametrize("S, r, d, expected", [

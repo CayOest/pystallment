@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
 
-import math
 import numpy as np
 from scipy.stats import norm, multivariate_normal
 from scipy.optimize import root_scalar
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 
-import black_scholes as bs
-import option as opt
+from pystallment import black_scholes as bs, option as opt
+
 
 def _mvn_cdf(cov, y):
     if len(y) == 1:

@@ -1,9 +1,6 @@
-import pytest
-
-import lsmc_pricer as lsmc
-import option as opt
-import binomial as bin
-from binomial import BinomialPricer
+from pystallment.algorithms import lsmc as lsmc
+from pystallment import option as opt
+from pystallment.algorithms.binomial import BinomialPricer
 
 
 def test_american_put():

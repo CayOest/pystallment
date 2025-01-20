@@ -1,10 +1,8 @@
 import pytest
 
-import option
 import test_data as td
-import lct_pricer as lct
-import black_scholes as bs
-from lct_pricer import LCTPricer
+from pystallment.algorithms import lct as lct
+from pystallment import black_scholes as bs, option
 
 
 def test_vanilla_call():

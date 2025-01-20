@@ -1,7 +1,7 @@
 import pytest
 
-import fdm as fdm
-import option as opt
+from pystallment.algorithms import fdm as fdm
+from pystallment import option as opt
 import test_data as td
 
 @pytest.mark.parametrize("vola, S, T, q, CNFD", td.ciurlia_inst_call)

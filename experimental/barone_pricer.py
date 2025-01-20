@@ -1,5 +1,4 @@
 import numpy as np
-import discrete
 from scipy.stats import norm
 from scipy.optimize import root_scalar
 

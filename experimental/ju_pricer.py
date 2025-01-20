@@ -1,6 +1,5 @@
 import numpy as np
-import discrete
-from discrete import option_value
+from pystallment.algorithms.discrete import option_value
 from scipy.stats import norm
 
 class JUPricer:

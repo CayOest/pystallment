@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 
-import discrete as dp
-import option as opt
+from pystallment.algorithms import discrete as dp
+from pystallment import option as opt
 import test_data as td
 
 @pytest.mark.parametrize("S, expected", [(95, 9.924985820040824),(100, 7.4345679279511785),(105, 5.455621099180533)])

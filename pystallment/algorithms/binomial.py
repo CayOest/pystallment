@@ -2,7 +2,7 @@ import numbers
 
 import numpy as np
 
-from option import AmericanOption
+from pystallment.option import AmericanOption
 
 class BinomialPricer:
     def __init__(self, option, num_steps = 1000, factor_adjustment='r-d'):
