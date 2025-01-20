@@ -11,14 +11,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        test_file:
-          - tests/test_binomial.py
-          - tests/test_discrete.py
-          - tests/test_fdm.py
-          - tests/test_lct.py
-          - tests/test_lsmc.py
 
     steps:
       - name: Check out repository
@@ -37,5 +29,5 @@ jobs:
       - name: Add project root to PYTHONPATH
         run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
-      - name: Run specific test file
-        run: pytest ${{ matrix.test_file }}
+      - name: Run all tests
+        run: pytest tests
