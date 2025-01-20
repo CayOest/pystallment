@@ -9,18 +9,18 @@ Supported products:
 
 Supported methods:
 * Discrete analytic formulas
-* Extrapolation of discrete prices (Richardson and polynomial)
 * Binomial model
-* Finite Difference
-* Least Squares Monte Carlo
-* Inversion of Laplace-Carson transform
+* Finite Difference (FD)
+* Least Squares Monte Carlo (LSMC)
+* Inversion of Laplace-Carson transform (LCT)
+* Extrapolation of discrete prices (Richardson and polynomial)
 
-|          |  Discrete  | Binomial |  FD  |  LSMC  | LCT | Extrapolation |
-|:---------|:----------:|:--------:|:----:|:------:|:---:|:-------------:|
-| Bermuda  |     x      |    x     |      |        |     |               |
-| n-Inst   |     x      |          |      |        |     |               |
-| EU Inst  |            |   x      |  x   |   x    |  x  |       x       |
-|  Am Inst |            |      x   |      |   x    |     |               |
+| Option Type                     |  Discrete  | Binomial |  FD  |  LSMC  | LCT | Extrapolation |
+|:--------------------------------|:----------:|:--------:|:----:|:------:|:---:|:-------------:|
+| Bermuda                         |     x      |    x     |      |        |     |               |
+| Discrete Installment            |     x      |          |      |        |     |               |
+| European Continuous Installment |            |   x      |  x   |   x    |  x  |       x       |
+| American Continuous Installment |            |      x   |      |   x    |     |               |
 
 
 ## Installation
