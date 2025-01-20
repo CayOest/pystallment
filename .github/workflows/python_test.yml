@@ -9,29 +9,22 @@ on:
       - main
 
 jobs:
-  discover_tests:
+  test:
     runs-on: ubuntu-latest
-    outputs:
-      test_files: ${{ steps.discover.outputs.files }}
+    strategy:
+      matrix:
+        test_file: ${{ fromJson(env.TEST_FILES) }}
+    env:
+      TEST_FILES: "" # Platzhalter für die Dateien
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
 
     - name: Discover test files
       id: discover
-      run: echo "$(find tests -name 'test_*.py' | paste -sd ',' -)"
-      env:
-        files: ${{ steps.discover.outputs.files }}
-
-  test:
-    needs: discover_tests
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        test_file: ${{ fromJson(needs.discover_tests.outputs.test_files) }}
-    steps:
-    - name: Check out repository
-      uses: actions/checkout@v3
+      run: |
+        files=$(find tests -name 'test_*.py' | jq -R . | jq -s .)
+        echo "TEST_FILES=$files" >> $GITHUB_ENV
 
     - name: Set up Python
       uses: actions/setup-python@v4
