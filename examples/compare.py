@@ -1,6 +1,6 @@
 import numpy as np
-from fdm_pricer import FDMPricer
-from discrete_pricer import InstallmentCallPricer, BermudaPutPricer, RichardsonPricer
+from fdm import FDMPricer
+from discrete import InstallmentCallPricer, BermudaPutPricer, RichardsonPricer
 
 import matplotlib.pyplot as plt
 

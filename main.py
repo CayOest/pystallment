@@ -1,8 +1,8 @@
 import numpy as np
 
-from discrete_pricer import InstallmentCallPricer, BermudaPutPricer, call, put
+from discrete import InstallmentCallPricer, BermudaPutPricer, call, put
 from lct_pricer import LCTPricer
-from fdm_pricer import FDMPricer
+from fdm import FDMPricer
 
 def single_check_fixed_q(S, K, r, d, vola, T, q, n):
     print("n = ", n)

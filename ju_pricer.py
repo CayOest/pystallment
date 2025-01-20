@@ -1,6 +1,6 @@
 import numpy as np
-import discrete_pricer
-from discrete_pricer import option_value
+import discrete
+from discrete import option_value
 from scipy.stats import norm
 
 class JUPricer:

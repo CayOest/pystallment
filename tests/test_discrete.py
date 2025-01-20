@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-import discrete_pricer as dp
+import discrete as dp
 import option as opt
 import test_data as td
 

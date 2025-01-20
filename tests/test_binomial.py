@@ -1,6 +1,6 @@
 import pytest
 
-import binomial_pricer as bp
+import binomial as bp
 import option as opt
 import black_scholes as bs
 import test_data as td

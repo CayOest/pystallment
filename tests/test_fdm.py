@@ -1,6 +1,6 @@
 import pytest
 
-import fdm_pricer as fdm
+import fdm as fdm
 import option as opt
 import test_data as td
 

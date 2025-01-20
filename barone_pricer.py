@@ -1,5 +1,5 @@
 import numpy as np
-import discrete_pricer
+import discrete
 from scipy.stats import norm
 from scipy.optimize import root_scalar
 
