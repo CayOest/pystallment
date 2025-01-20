@@ -40,7 +40,7 @@ class LSMCPricer:
 
         # Rückwärtsinduktion mit Regression
         V = payoffs[:, -1]  # Endzeitwerte (Payoff bei Endfälligkeit)
-        stop_times = np.ones(self.num_paths) * self.T
+        stop_times = np.ones(self.num_paths) * self.time_steps
         for t in range(self.time_steps, 0, -1):
             if self.is_american:
                 # Identifiziere In-the-Money-Pfade
@@ -62,8 +62,9 @@ class LSMCPricer:
                     V[in_the_money] = np.where(exercise, payoffs[in_the_money, t], V_itm)
                 V[~in_the_money] *= df
             if hasattr(self.option, "q"):
-                y = df*V - qi
-                oom = y > -12
+                _df = np.exp(-self.option.r*self.dt*(stop_times-t))
+                y = _df*V - self.option.q/self.option.r*(1-_df)
+                oom = payoffs[:,t] == 0
                 S_oom = self.paths[oom, t]
                 y_oom = y[oom]
                 if len(S_oom) > 0:
@@ -77,9 +78,13 @@ class LSMCPricer:
 
                     # Entscheidung: Fortführen oder Stoppen der Ratenzahlung
                     stop = continuation_value < 0
+                    stop_times[oom] = np.where(stop, t, stop_times[oom])
                     V[oom] = np.where(stop, 0, V[oom])
-                V = np.maximum(df*V - qi, 0)
 
         # Diskontierter Erwartungswert am Anfang
         option_price = np.mean(V) * df
+        if hasattr(self.option, "q"):
+            _df = np.exp(-self.option.r*self.dt*stop_times)
+            y = _df*V - self.option.q/self.option.r*(1-_df)
+            option_price = np.mean(y)
         return option_price

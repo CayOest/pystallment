@@ -26,11 +26,11 @@ def test_american_put():
 def test_installment_call():
     S = 96
     K = 100
-    r = 0.02
-    d = 0.00
+    r = 0.05
+    d = 0.04
     vola = 0.2
     T = 1.0
-    q = 0
+    q = 3
 
     option = opt.ContinuousInstallmentOption(S, K, r, d, vola, T, q, phi=+1)
 
