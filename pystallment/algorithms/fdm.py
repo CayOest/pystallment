@@ -3,7 +3,15 @@ import numpy as np
 from pystallment.option import AmericanOption
 from scipy.linalg import solve_banded
 
-def _solve_scipy(upper, main, lower, b):
+def _solve_tridiagonal_system(upper, main, lower, b):
+    """
+    Solve a linear system Ax = b, where A is a tridiagonal matrix
+    :param upper: the upper diagonal, preceded by a 0
+    :param main: the main diagonal
+    :param lower: the lower diagonal, trailed by a 0
+    :param b:
+    :return: the solution
+    """
     ab = np.array([upper, main, lower])
     x = solve_banded((1, 1), ab, b)
     return x
@@ -16,7 +24,7 @@ class FDMPricer:
     """
     def __init__(self, option):
         self._option = option
-        self.space_steps = 1000
+        self.space_steps = 10000
         self.time_steps = int(1600*self._option.T)
         self._is_american = isinstance(self._option, AmericanOption)
         self._stop = None
@@ -45,10 +53,27 @@ class FDMPricer:
         alpha = -0.5*self._option.vola**2/self._delta_S**2
         beta = (self._option.r-self._option.d)/(2*self._delta_S)
         n = len(S)-1
-        a[1:] = (alpha*(S[2:(len(S)-1)]**2) + beta*S[2:(len(S)-1)])*self._delta_t
+        a[:(len(a)-1)] = (alpha*(S[2:(len(S)-1)]**2) + beta*S[2:(len(S)-1)])*self._delta_t
         b = 1 + self._option.vola**2/self._delta_S**2 * self._delta_t * (S[1:n]**2) + self._option.r * self._delta_t
-        c[:(len(c)-1)] = (alpha*(S[1:(n-1)]**2) -beta*(S[1:(n-1)]))*self._delta_t
+        c[1:] = (alpha*(S[1:(n-1)]**2) -beta*(S[1:(n-1)]))*self._delta_t
         return (a, b, c)
+
+    def _adjust_for_events(self, t, S, V, exercise_values):
+        # adjust for exercise events
+        if self._is_american:
+            exercise = V < exercise_values
+            V = np.where(exercise, exercise_values, V)
+            idx = -1 if self._option.phi == -1 else 0
+            ex_index = np.where(exercise)[0][idx] if np.any(exercise) else None
+            self._ex[t] = S[ex_index] if ex_index is not None else self._ex[t + 1]
+
+        # adjust for stop events
+        stop = V < 0
+        V = np.where(stop, 0, V)
+        idx = -1 if self._option.phi == +1 else 0
+        stop_index = np.where(stop)[0][idx] if np.any(stop) else None
+        self._stop[t] = S[stop_index] if stop_index is not None else self._stop[t + 1]
+        return V
 
     def _calc(self):
         # Parameter
@@ -68,10 +93,8 @@ class FDMPricer:
 
         for t in range(self.time_steps - 1, -1, -1):
             V_ = V[1:self.space_steps] - q * self._delta_t
-            a_ = np.append(a[1:], 0)
-            c_ = np.append([0], c[:(len(c)-1)])
-            V_inner = _solve_scipy(c_, b, a_, V_)
-
+            V_inner = _solve_tridiagonal_system(c, b, a, V_)
+            V[1:self.space_steps] = V_inner
             # boundary conditions
             if self._option.phi == +1:
                 V[0] = 0
@@ -80,22 +103,7 @@ class FDMPricer:
                 V[0] = self._option.K
                 V[-1] = 0
 
-            V[1:self.space_steps] = V_inner
-
-            # adjust for exercise events
-            if self._is_american:
-                exercise = V < exercise_values
-                V = np.where(exercise, exercise_values, V)
-                idx = -1 if self._option.phi == -1 else 0
-                ex_index = np.where(exercise)[0][idx] if np.any(exercise) else None
-                self._ex[t] = S[ex_index] if ex_index is not None else self._ex[t+1]
-
-            # adjust for stop events
-            stop = V < 0
-            V = np.where(stop, 0, V)
-            idx = -1 if self._option.phi == +1 else 0
-            stop_index = np.where(stop)[0][idx] if np.any(stop) else None
-            self._stop[t] = S[stop_index] if stop_index is not None else self._stop[t + 1]
+            V = self._adjust_for_events(t, S, V, exercise_values)
 
         return np.interp(self._option.S, S, V)
 
