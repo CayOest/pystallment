@@ -1,5 +1,8 @@
 import numpy as np
 
+from pystallment.option import AmericanOption
+
+
 def thomas_algorithm(a, b, c, d):
     """
     Thomas-Algorithm for solving Ax = d,
@@ -30,71 +33,85 @@ def thomas_algorithm(a, b, c, d):
     return x
 
 class FDMPricer:
+    """
+    Class FDMPricer calculates the price of a European/American vanilla/installment option.
+    At the moment, only the implicit method is implemented.
+    todo: Implement general Runge-Kutta
+    """
     def __init__(self, option):
-        self.option = option
+        self._option = option
         self.space_steps = 1000
-        self.time_steps = int(1600*self.option.T)
+        self.time_steps = int(1600*self._option.T)
+        self._is_american = isinstance(self._option, AmericanOption)
+        self._stop = None
+        self._ex = None
+
+    @property
+    def stop(self):
+        return self._stop
+
+    @property
+    def ex(self):
+        return self._ex
+        
+    def _init_bounds(self):
+        self._stop = np.zeros(self.time_steps + 1)
+        self._ex = np.zeros(self.time_steps + 1)
+        self._stop[self.time_steps] = self._option.K
+        self._ex[self.time_steps] = self._option.K
 
     def _calc(self):
         # Parameter
-        self.is_american = False
-        self.stop = np.zeros(self.time_steps + 1)
-        self.ex_bound = np.zeros(self.time_steps + 1)
-        S_max = max(3 * self.option.S, 3 * self.option.K)
+        S_max = max(3 * self._option.S, 3 * self._option.K)
 
         delta_S = S_max / self.space_steps  # step size in space
-        delta_t = self.option.T / self.time_steps  # step size in time
+        delta_t = self._option.T / self.time_steps  # step size in time
         S = np.linspace(0, S_max, self.space_steps + 1)  # space grid
-        self.stop[self.time_steps] = self.option.K
-        self.ex_bound[self.time_steps] = self.option.K
-
-        payoff = np.maximum(self.option.phi*(S-self.option.K), 0)
-
+        
         a = np.zeros(self.space_steps -1 )
         b = np.zeros(self.space_steps - 1)
         c = np.zeros(self.space_steps - 1)
         for j in range(1, self.space_steps):
             S_j = S[j]
-            a[j - 1] = (-0.5 * self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 + (self.option.r-self.option.d) * S_j / (2 * delta_S)) * delta_t if j > 1 else 0
-            b[j - 1] = 1 + self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 * delta_t + self.option.r * delta_t
-            c[j - 1] = (-0.5 * self.option.vola ** 2 * S_j ** 2 / delta_S ** 2 - (self.option.r-self.option.d) * S_j / (2 * delta_S)) * delta_t if j < self.space_steps - 1 else 0
+            a[j - 1] = (-0.5 * self._option.vola ** 2 * S_j ** 2 / delta_S ** 2 + (self._option.r-self._option.d) * S_j / (2 * delta_S)) * delta_t if j > 1 else 0
+            b[j - 1] = 1 + self._option.vola ** 2 * S_j ** 2 / delta_S ** 2 * delta_t + self._option.r * delta_t
+            c[j - 1] = (-0.5 * self._option.vola ** 2 * S_j ** 2 / delta_S ** 2 - (self._option.r-self._option.d) * S_j / (2 * delta_S)) * delta_t if j < self.space_steps - 1 else 0
 
         q = 0
-        if hasattr(self.option, "q"):
-            q = self.option.q
+        if hasattr(self._option, "installment_rate"):
+            q = self._option.installment_rate
 
-        V = payoff.copy()
-        for n in range(self.time_steps - 1, -1, -1):
+        exercise_values = self._option.payoff(S)
+        V = exercise_values
+
+        for t in range(self.time_steps - 1, -1, -1):
             V_ = V[1:self.space_steps] - q * delta_t
             V_inner = thomas_algorithm(a[1:], b, c[:self.space_steps-1], V_)
 
             # boundary conditions
-            if self.option.phi == +1:
+            if self._option.phi == +1:
                 V[0] = 0
                 V[-1] = S_max
             else:
-                V[0] = self.option.K
+                V[0] = self._option.K
                 V[-1] = 0
 
-            if self.is_american:
-                # todo: only works for phi = +1, i. e. call
-                for j in range(0, self.space_steps-1):
-                    if V_inner[j] < self.option.phi*(S[j] - self.option.K):
-                        V_inner[j] = self.option.phi*( S[j] - self.option.K)
-                        self.ex_bound[n] = S[j]
-
             V[1:self.space_steps] = V_inner
-            for j in range(self.space_steps+1):
-                if V[j] < 0:
-                    if self.option.phi == 1:
-                        self.stop[n] = max(self.stop[n], S[j])
-                    else:
-                        if self.stop[n] == 0:
-                            self.stop[n] = S[j]
-                    V[j] = 0
 
-        option_price = np.interp(self.option.S, S, V)
-        return option_price
+            # adjust for exercise events
+            if self._is_american:
+                exercise = V < exercise_values
+                V = np.where(exercise, exercise_values, V)
+                idx = -1 if self._option.phi == -1 else 0
+                ex_index = np.where(exercise)[0][idx] if np.any(exercise) else None
+                self._ex[t] = S[ex_index] if ex_index is not None else self._ex[t+1]
+
+            # adjust for stop events
+            stop = V < 0
+            V = np.where(stop, 0, V)
+
+        return np.interp(self._option.S, S, V)
 
     def price(self):
+        self._init_bounds()
         return self._calc()

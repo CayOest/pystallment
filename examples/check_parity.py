@@ -19,8 +19,9 @@ def check_formula(S, K, r, vola, T, space_steps, time_steps, plot_boundaries=Tru
 
     # price American put
     option = opt.AmericanOption(S, K, r, 0, vola, T, phi=-1)
-    put_pricer = BinomialPricer(option)
-    put_pricer.num_steps = time_steps
+    put_pricer = FDMPricer(option)
+    put_pricer.space_steps = space_steps
+    put_pricer.time_steps = time_steps
     put_price = put_pricer.price()
     print(f"Put Price = {put_price:.3f}")
     
@@ -31,7 +32,7 @@ def check_formula(S, K, r, vola, T, space_steps, time_steps, plot_boundaries=Tru
     if plot_boundaries:
         t = np.linspace(0, T, time_steps+1)
         ax.plot( t, call_pricer.stop, label=f'stop, M={time_steps}, N={space_steps}', lw=5, color='red')  # Linie hinzufügen
-        ax.plot(t, put_pricer.ex_bound, label=f'ex, M={time_steps}, N={space_steps}', lw=1, color='blue')  # Linie hinzufügen
+        ax.plot(t, put_pricer.ex, label=f'ex, M={time_steps}, N={space_steps}', lw=1, color='blue')  # Linie hinzufügen
         ax.legend()  # Legende aktualisieren
         plt.draw()  # Zeichne den aktuellen Plot
         plt.pause(0.1)

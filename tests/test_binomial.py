@@ -4,21 +4,7 @@ from pystallment.algorithms import binomial as bp
 from pystallment import black_scholes as bs, option as opt
 import test_data as td
 
-@pytest.mark.parametrize("S, r, d, expected", [
-    (95, 0.02, 0.00, 9.559604714303656),
-    (105, 0.02, 0.00, 5.182835507452405),
-    (95, 0.05, 0.00, 8.452646381525147),
-    (105, 0.05, 0.00, 4.306098201373055),
-    (95, 0.1, 0.00, 7.138640520662231),
-    (105, 0.1, 0.00, 3.2045597568873134),
-    # d = 0.04
-    (95, 0.02, 0.04, 11.385533383653373),
-    (105, 0.02, 0.04, 6.5735670941797775),
-    (95, 0.05, 0.04, 9.755163939182946),
-    (105, 0.05, 0.04, 5.362941132857127),
-    (95, 0.1, 0.04, 8.011765981901965),
-    (105, 0.1, 0.04, 3.9592945293385684),
-    ])
+@pytest.mark.parametrize("S, r, d, expected", td.std_american_put)
 def test_american_put(S, r, d, expected):
     K = 100
     vola = 0.2
