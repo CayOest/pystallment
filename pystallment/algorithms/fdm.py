@@ -1,35 +1,11 @@
 import numpy as np
 
 from pystallment.option import AmericanOption
+from scipy.linalg import solve_banded
 
-
-def thomas_algorithm(a, b, c, d):
-    """
-    Thomas-Algorithm for solving Ax = d,
-    a: lower diagonal (n-1 elements)
-    b: main diagonal (n elements)
-    c: upper diagonal (n-1 elements)
-    d: right hand side (n Elements)
-    """
-    n = len(d)
-    c_ = np.zeros(n - 1)
-    d_ = np.zeros(n)
-
-    # Vorwärtselimination
-    c_[0] = c[0] / b[0]
-    d_[0] = d[0] / b[0]
-    for i in range(1, n - 1):
-        denom = b[i] - a[i - 1] * c_[i - 1]
-        c_[i] = c[i] / denom
-        d_[i] = (d[i] - a[i - 1] * d_[i - 1]) / denom
-    d_[n - 1] = (d[n - 1] - a[n - 2] * d_[n - 2]) / (b[n - 1] - a[n - 2] * c_[n - 2])
-
-    # Rückwärtssubstitution
-    x = np.zeros(n)
-    x[-1] = d_[-1]
-    for i in range(n - 2, -1, -1):
-        x[i] = d_[i] - c_[i] * x[i + 1]
-
+def _solve_scipy(upper, main, lower, b):
+    ab = np.array([upper, main, lower])
+    x = solve_banded((1, 1), ab, b)
     return x
 
 class FDMPricer:
@@ -92,7 +68,9 @@ class FDMPricer:
 
         for t in range(self.time_steps - 1, -1, -1):
             V_ = V[1:self.space_steps] - q * self._delta_t
-            V_inner = thomas_algorithm(a[1:], b, c[:self.space_steps-1], V_)
+            a_ = np.append(a[1:], 0)
+            c_ = np.append([0], c[:(len(c)-1)])
+            V_inner = _solve_scipy(c_, b, a_, V_)
 
             # boundary conditions
             if self._option.phi == +1:
