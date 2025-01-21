@@ -45,6 +45,8 @@ class FDMPricer:
         self._is_american = isinstance(self._option, AmericanOption)
         self._stop = None
         self._ex = None
+        self._delta_S = 0.0
+        self._delta_t = 0.0
 
     @property
     def stop(self):
@@ -59,23 +61,26 @@ class FDMPricer:
         self._ex = np.zeros(self.time_steps + 1)
         self._stop[self.time_steps] = self._option.K
         self._ex[self.time_steps] = self._option.K
+        
+    def _get_matrix(self, S):
+        a = np.zeros(self.space_steps - 1)
+        b = np.zeros(self.space_steps - 1)
+        c = np.zeros(self.space_steps - 1)
+        alpha = -0.5*self._option.vola**2/self._delta_S**2
+        beta = (self._option.r-self._option.d)/(2*self._delta_S)
+        n = len(S)-1
+        a[1:] = (alpha*(S[2:(len(S)-1)]**2) + beta*S[2:(len(S)-1)])*self._delta_t
+        b = 1 + self._option.vola**2/self._delta_S**2 * self._delta_t * (S[1:n]**2) + self._option.r * self._delta_t
+        c[:(len(c)-1)] = (alpha*(S[1:(n-1)]**2) -beta*(S[1:(n-1)]))*self._delta_t
+        return (a, b, c)
 
     def _calc(self):
         # Parameter
         S_max = max(3 * self._option.S, 3 * self._option.K)
 
-        delta_S = S_max / self.space_steps  # step size in space
-        delta_t = self._option.T / self.time_steps  # step size in time
+        self._delta_S = S_max / self.space_steps  # step size in space
+        self._delta_t = self._option.T / self.time_steps  # step size in time
         S = np.linspace(0, S_max, self.space_steps + 1)  # space grid
-        
-        a = np.zeros(self.space_steps -1 )
-        b = np.zeros(self.space_steps - 1)
-        c = np.zeros(self.space_steps - 1)
-        for j in range(1, self.space_steps):
-            S_j = S[j]
-            a[j - 1] = (-0.5 * self._option.vola ** 2 * S_j ** 2 / delta_S ** 2 + (self._option.r-self._option.d) * S_j / (2 * delta_S)) * delta_t if j > 1 else 0
-            b[j - 1] = 1 + self._option.vola ** 2 * S_j ** 2 / delta_S ** 2 * delta_t + self._option.r * delta_t
-            c[j - 1] = (-0.5 * self._option.vola ** 2 * S_j ** 2 / delta_S ** 2 - (self._option.r-self._option.d) * S_j / (2 * delta_S)) * delta_t if j < self.space_steps - 1 else 0
 
         q = 0
         if hasattr(self._option, "installment_rate"):
@@ -83,9 +88,10 @@ class FDMPricer:
 
         exercise_values = self._option.payoff(S)
         V = exercise_values
+        (a, b, c) = self._get_matrix(S)
 
         for t in range(self.time_steps - 1, -1, -1):
-            V_ = V[1:self.space_steps] - q * delta_t
+            V_ = V[1:self.space_steps] - q * self._delta_t
             V_inner = thomas_algorithm(a[1:], b, c[:self.space_steps-1], V_)
 
             # boundary conditions
@@ -109,6 +115,9 @@ class FDMPricer:
             # adjust for stop events
             stop = V < 0
             V = np.where(stop, 0, V)
+            idx = -1 if self._option.phi == +1 else 0
+            stop_index = np.where(stop)[0][idx] if np.any(stop) else None
+            self._stop[t] = S[stop_index] if stop_index is not None else self._stop[t + 1]
 
         return np.interp(self._option.S, S, V)
 
