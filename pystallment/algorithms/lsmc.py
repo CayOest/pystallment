@@ -4,14 +4,17 @@ import numpy.random
 from pystallment.option import AmericanOption
 
 class LSMCPricer:
+    """
+    LSMCPricer prices vanilla/installment options using antithetic paths.
+    It extrapolates continuation value by Hermite polynomials 
+    """
     def __init__(self, option, num_paths = 10000, fit = 'hermite'):
         self.option = option
         self.num_paths = int(num_paths)
         self.time_steps = int(self.option.T*320)
-        self.plot = False
-        self.is_american = isinstance(self.option, AmericanOption)
         self.fit = fit
         self.seed = None
+        self._is_american = isinstance(self.option, AmericanOption)
 
     def _generate_paths(self):
         rng = numpy.random.default_rng(self.seed)
@@ -34,7 +37,7 @@ class LSMCPricer:
         payoffs = self.option.payoff(self.paths)
 
         q = 0
-        if hasattr(self.option, "q"):
+        if hasattr(self.option, "installment_rate"):
             q = self.option.q
 
         V = payoffs[:, -1]
@@ -44,7 +47,7 @@ class LSMCPricer:
             _df = np.exp(-self.option.r * self.dt * (stop_times - t))
             y = _df * V - q / self.option.r * (1 - _df)
 
-            if self.is_american:
+            if self._is_american:
                 S_itm = self.paths[itm, t]
                 y_itm = y[itm]
                 if len(S_itm) > 0:

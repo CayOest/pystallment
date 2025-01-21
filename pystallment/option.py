@@ -248,3 +248,7 @@ class AmericanContinuousInstallmentOption(AmericanOption):
         """
         super().__init__(S, K, r, d, vola, T, phi)
         self.q = q
+
+    @property
+    def installment_rate(self):
+        return self.q
