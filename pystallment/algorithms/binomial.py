@@ -52,27 +52,21 @@ class BinomialPricer:
 
         return prices
 
-    def _check_stop_event(self, step, Vi, Si):
+    def _check_stop_event(self, step, V, S):
         if self._is_american:
-            exercise = self._option.payoff(Si)
-            if exercise > 0 and Vi <= exercise:  # exercise event
-                Vi = exercise
-                if self.ex_bound[step] < 1e-12:
-                    self.ex_bound[step] = Si
+            exercise_value = self._option.payoff(S)
+            exercise = V <= exercise_value
+            V = np.where(exercise, exercise_value, V)
+            idx = -1 if self._option.phi == -1 else 0
+            ex_index = np.where(exercise)[0][idx] if np.any(exercise) else None
+            self.ex_bound[step] = S[ex_index] if ex_index is not None else self.ex_bound[step + 1]
 
-                if self._option.phi == -1:
-                    self.ex_bound[step] = max(self.ex_bound[step], Si)
-                else: #todo: check this
-                    self.ex_bound[step] = min(self.ex_bound[step], Si)
-
-        if Vi <= 0:  # stop event
-            Vi = 0
-            if self._option.phi == -1:
-                self.stop_bound[step] = Si
-            else:
-                if self.stop_bound[step] == 0:
-                    self.stop_bound[step] = Si
-        return Vi
+        stop = V < 0
+        V = np.where(stop, 0, V)
+        idx = -1 if self._option.phi == +1 else 0
+        stop_index = np.where(stop)[0][idx] if np.any(stop) else None
+        self.stop_bound[step] = S[stop_index] if stop_index is not None else self.stop_bound[step + 1]
+        return V
 
     def _get_ttm(self):
         if hasattr(self._option, "T"):
@@ -107,9 +101,9 @@ class BinomialPricer:
 
         V = self._option.payoff(self._prices[self.num_steps, :])
         for step in range(self.num_steps-1, -1, -1):
-            for i in range(step + 1):
-                V[i] = df*(self._p*V[i] + (1-self._p)*V[i+1]) - qi
-                V[i] = self._check_stop_event(step, V[i], self._prices[step, i])
+            V_ = df*(self._p*V[:(step+1)] + (1-self._p)*V[1:]) - qi
+            V_ = self._check_stop_event(step, V_, self._prices[step, :(step+1)])
+            V = V_
 
         return V[0]
 
