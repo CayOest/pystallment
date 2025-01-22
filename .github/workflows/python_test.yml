@@ -27,7 +27,7 @@ jobs:
           pip install .
 
       - name: Add project root to PYTHONPATH
-        run: echo "PYTHONPATH=PYTHONPATH:PYTHONPATH:(pwd)" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
       - name: Run all unit tests
         run: pytest tests --ignore tests/benchmark
