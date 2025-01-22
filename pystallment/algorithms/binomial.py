@@ -98,7 +98,6 @@ class BinomialPricer:
         T = self._get_ttm()
         dt = T/self.num_steps
         up, do, p = self._get_up_down_p(dt)
-        print(f"up = {up}, do = {do}")
 
         # build price tree
         prices = self._generate_prices(self.num_steps+1, up, do)

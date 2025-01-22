@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.random
+import time
 
 from pystallment.option import AmericanOption
 
@@ -8,7 +9,7 @@ class LSMCPricer:
     LSMCPricer prices vanilla/installment options using antithetic paths.
     It extrapolates continuation value by Hermite polynomials 
     """
-    def __init__(self, option, num_paths = 10000, fit = 'hermite'):
+    def __init__(self, option, num_paths = 50000, fit = 'hermite'):
         self.option = option
         self.num_paths = int(num_paths)
         self.time_steps = int(self.option.T*320)
@@ -22,15 +23,18 @@ class LSMCPricer:
         self.paths = np.zeros((self.num_paths, self.time_steps + 1))
         self.dt = self.option.T / self.time_steps
 
-        for i in range(int(self.num_paths/2)):
-            self.paths[i, 0] = self.option.S
-            self.paths[self.num_paths-i-1, 0] = self.option.S
-            for t in range(1, self.time_steps+1):
-                e = rng.normal()
-                self.paths[i, t] =  self.paths[i][t-1]*np.exp((self.option.r-self.option.d - 0.5*self.option.vola**2)*self.dt + self.option.vola*e*np.sqrt(self.dt))
-                e = -e
-                self.paths[self.num_paths-i-1, t] = self.paths[self.num_paths-i-1][t - 1] * np.exp((self.option.r - self.option.d - 0.5 * self.option.vola ** 2) * self.dt + self.option.vola * e * np.sqrt(
-                    self.dt))
+        alpha = (self.option.r-self.option.d - 0.5*self.option.vola**2)*self.dt
+        beta = self.option.vola*np.sqrt(self.dt)
+
+        self.paths[:, 0] = self.option.S
+
+        n = int(self.num_paths/2)
+        E = rng.normal(size=(n, self.time_steps))
+        E = np.cumsum(E, axis = 1)
+        O = np.ones((n, self.time_steps))
+        O = np.cumsum(O, axis = 1)
+        self.paths[:n, 1:] = self.option.S * np.exp( alpha*O + beta*E )
+        self.paths[n:, 1:] = self.option.S * np.exp(alpha * O - beta * E)
 
     def price(self):
         self._generate_paths()
@@ -54,17 +58,18 @@ class LSMCPricer:
                     if self.fit == 'hermite':
                         fitted = np.polynomial.Hermite.fit(S_itm, y_itm, 4)
                         continuation_value = fitted(S_itm)
-
-                    if self.fit == 'poly':
+                    elif self.fit == 'poly':
                         regression = np.polyfit(S_itm, y_itm, 2)
                         continuation_value = np.polyval(regression, S_itm)
+                    else:
+                        raise TypeError(f"fit method {self.fit} not supported.")
 
                     # Entscheidung: Ausüben oder Fortführen
                     exercise = payoffs[itm, t] > continuation_value
                     stop_times[itm] = np.where(exercise, t, stop_times[itm])
                     V[itm] = np.where(exercise, payoffs[itm, t], V[itm])
 
-            if q != 0:
+            if np.abs(q) > 1e-12:
                 oom = ~itm
                 S_oom = self.paths[oom, t]
                 y_oom = y[oom]
@@ -78,7 +83,7 @@ class LSMCPricer:
                         continuation_value = np.polyval(regression, S_oom)
 
                     # Entscheidung: Fortführen oder Stoppen der Ratenzahlung
-                    stop = continuation_value < 0
+                    stop = continuation_value <= 0
                     stop_times[oom] = np.where(stop, t, stop_times[oom])
                     V[oom] = np.where(stop, 0, V[oom])
 

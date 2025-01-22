@@ -57,7 +57,7 @@ def test_american_installment_call():
     option = opt.AmericanContinuousInstallmentOption(S, K, r, d, vola, T, q, phi=+1)
 
     mcp = lsmc.LSMCPricer(option)
-    mcp.num_paths = int(1e4)
+    mcp.num_paths = int(1e5)
     mcp.seed = 42
     mcprice = mcp.price()
     print(f"MC Price = {mcprice:.3f}")
