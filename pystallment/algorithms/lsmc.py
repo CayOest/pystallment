@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.random
-import time
 
 from pystallment.option import AmericanOption
 
@@ -9,47 +8,47 @@ class LSMCPricer:
     LSMCPricer prices vanilla/installment options using antithetic paths.
     It extrapolates continuation value by Hermite polynomials 
     """
-    def __init__(self, option, num_paths = 50000, fit = 'hermite'):
-        self.option = option
+    def __init__(self, option, num_paths = 100000, fit = 'hermite'):
+        self._option = option
         self.num_paths = int(num_paths)
-        self.time_steps = int(self.option.T*320)
+        self.time_steps = int(self._option.T*320)
         self.fit = fit
         self.seed = None
-        self._is_american = isinstance(self.option, AmericanOption)
+        self._is_american = isinstance(self._option, AmericanOption)
 
     def _generate_paths(self):
         rng = numpy.random.default_rng(self.seed)
 
         self.paths = np.zeros((self.num_paths, self.time_steps + 1))
-        self.dt = self.option.T / self.time_steps
+        self.dt = self._option.T / self.time_steps
 
-        alpha = (self.option.r-self.option.d - 0.5*self.option.vola**2)*self.dt
-        beta = self.option.vola*np.sqrt(self.dt)
+        alpha = (self._option.r-self._option.d - 0.5*self._option.vola**2)*self.dt
+        beta = self._option.vola*np.sqrt(self.dt)
 
-        self.paths[:, 0] = self.option.S
+        self.paths[:, 0] = self._option.S
 
         n = int(self.num_paths/2)
         E = rng.normal(size=(n, self.time_steps))
         E = np.cumsum(E, axis = 1)
         O = np.ones((n, self.time_steps))
         O = np.cumsum(O, axis = 1)
-        self.paths[:n, 1:] = self.option.S * np.exp( alpha*O + beta*E )
-        self.paths[n:, 1:] = self.option.S * np.exp(alpha * O - beta * E)
+        self.paths[:n, 1:] = self._option.S * np.exp( alpha*O + beta*E )
+        self.paths[n:, 1:] = self._option.S * np.exp(alpha * O - beta * E)
 
     def price(self):
         self._generate_paths()
-        payoffs = self.option.payoff(self.paths)
+        payoffs = self._option.payoff(self.paths)
 
         q = 0
-        if hasattr(self.option, "installment_rate"):
-            q = self.option.q
+        if hasattr(self._option, "installment_rate"):
+            q = self._option.q
 
         V = payoffs[:, -1]
         stop_times = np.ones(self.num_paths) * self.time_steps
         for t in range(self.time_steps, 0, -1):
             itm = payoffs[:, t] > 0
-            _df = np.exp(-self.option.r * self.dt * (stop_times - t))
-            y = _df * V - q / self.option.r * (1 - _df)
+            _df = np.exp(-self._option.r * self.dt * (stop_times - t))
+            y = _df * V - q / self._option.r * (1 - _df)
 
             if self._is_american:
                 S_itm = self.paths[itm, t]
@@ -88,7 +87,7 @@ class LSMCPricer:
                     V[oom] = np.where(stop, 0, V[oom])
 
         # Diskontierter Erwartungswert am Anfang
-        _df = np.exp(-self.option.r*self.dt*stop_times)
-        y = _df*V - q/self.option.r*(1-_df)
+        _df = np.exp(-self._option.r*self.dt*stop_times)
+        y = _df*V - q/self._option.r*(1-_df)
         option_price = np.mean(y)
         return option_price

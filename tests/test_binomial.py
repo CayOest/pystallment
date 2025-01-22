@@ -1,4 +1,5 @@
 import pytest
+import time
 
 from pystallment.algorithms import binomial as bp
 from pystallment import black_scholes as bs, option as opt
@@ -72,3 +73,4 @@ def test_installment_call_ciurlia(vola, S, T, q, CNFD):
     val = pricer.price()
     print(f"val = {val:.3f}, diff = {(val-CNFD)*100/max(val, CNFD):.3f} %")
     assert val == pytest.approx(CNFD, abs=1e-2)
+
